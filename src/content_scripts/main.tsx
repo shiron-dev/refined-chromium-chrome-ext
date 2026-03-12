@@ -1,66 +1,314 @@
 export {};
 
-interface ToggleMessage {
-  type: "TEMPLATE_TOGGLE_HIGHLIGHT"
+type PrEvent = "review_requested" | "approved" | "commented" | "reviewed" | "changes_requested" | "merged";
+type ReviewerStatus = "has_reviewers" | "no_reviewers" | "unknown";
+type ApprovalStatus = "approved" | "not_approved" | "unknown";
+type CommentStatus = "has_comments" | "no_comments" | "unknown";
+
+interface ScanPrTimelineMessage {
+  type: "SCAN_PR_TIMELINE"
+  prUrl: string
 }
 
-const extensionApi = (globalThis as any).chrome;
-const BANNER_ID = "template-extension-banner";
-let isHighlighted = false;
-
-function upsertBanner(text: string): void {
-  const existing = document.getElementById(BANNER_ID);
-
-  if (existing) {
-    existing.textContent = text;
-    return;
-  }
-
-  const banner = document.createElement("div");
-  banner.id = BANNER_ID;
-  banner.textContent = text;
-  banner.style.position = "fixed";
-  banner.style.bottom = "16px";
-  banner.style.right = "16px";
-  banner.style.padding = "10px 14px";
-  banner.style.borderRadius = "8px";
-  banner.style.background = "#111827";
-  banner.style.color = "#fff";
-  banner.style.fontSize = "12px";
-  banner.style.zIndex = "2147483647";
-  banner.style.boxShadow = "0 6px 18px rgba(0,0,0,0.25)";
-  document.body.append(banner);
+interface PrTimelineScannedMessage {
+  type: "PR_TIMELINE_SCANNED"
+  prUrl: string
+  events: PrEvent[]
+  reviewerStatus: ReviewerStatus
+  approvalStatus: ApprovalStatus
+  commentStatus: CommentStatus
+  prTitle: string | null
 }
 
-function applyHighlight(): void {
-  const root = document.documentElement;
-  if (!root) {
-    return;
-  }
-
-  isHighlighted = !isHighlighted;
-  root.style.outline = isHighlighted ? "3px solid #f97316" : "";
-
-  upsertBanner(
-    isHighlighted
-      ? "Template: page highlight ON (click extension icon to toggle)"
-      : "Template: page highlight OFF",
-  );
-}
-
-function init(): void {
-  upsertBanner("Template content script loaded");
-
-  extensionApi?.runtime?.onMessage?.addListener((message: ToggleMessage) => {
-    if (message.type === "TEMPLATE_TOGGLE_HIGHLIGHT") {
-      applyHighlight();
+interface ExtensionApiLike {
+  runtime?: {
+    onMessage?: {
+      addListener: (callback: (message: ScanPrTimelineMessage) => void) => void
     }
-  });
+    sendMessage: (message: unknown) => Promise<unknown>
+  }
 }
 
-if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", init, { once: true });
+const SPACING_PATTERN = /\s+/g;
+const REVIEW_REQUEST_PATTERNS = [
+  /requested review from/,
+  /requested a review from/,
+  /review request(ed)?/,
+];
+const APPROVED_PATTERNS = [
+  /approved these changes/,
+  /approved$/,
+  /approved this pull request/,
+];
+const REVIEWED_PATTERNS = [
+  /reviewed/,
+];
+const COMMENTED_PATTERNS = [
+  /left a comment/,
+  /commented/,
+  /left review comments/,
+];
+const CHANGES_REQUESTED_PATTERNS = [
+  /requested changes/,
+  /request(ed)? changes?/,
+];
+const MERGED_PATTERNS = [
+  /merged this pull request/,
+  /merged commit/,
+];
+const NO_REVIEWS_PATTERN = /no reviews?/;
+const APPROVED_CHANGES_PATTERN = /approved these changes/;
+const REVIEW_COMMENTS_PATTERN = /left review comments?/;
+const AWAITING_REVIEW_PATTERN = /awaiting requested review from/;
+const BOT_SUFFIX_PATTERN = /\[bot\]$/;
+const PR_NUMBER_SUFFIX_PATTERN = /\s*#\d+\s*$/u;
+
+const extensionApi = (globalThis as { chrome?: ExtensionApiLike }).chrome;
+
+function normalizeText(raw: string): string {
+  return raw.replace(SPACING_PATTERN, " ").trim().toLowerCase();
 }
-else {
-  init();
+
+function isBotAccountName(name: string): boolean {
+  return BOT_SUFFIX_PATTERN.test(name.trim().toLowerCase());
 }
+
+function isBotTimelineItem(item: HTMLElement): boolean {
+  if (item.querySelector("[href*='[bot]'], [data-hovercard-url*='[bot]']")) {
+    return true;
+  }
+
+  const labelTexts = Array.from(
+    item.querySelectorAll<HTMLElement>(".Label--secondary, .IssueLabel"),
+    node => normalizeText(node.textContent || ""),
+  );
+  return labelTexts.includes("bot");
+}
+
+function isBotReviewStatusTooltip(reviewersSection: HTMLElement, tooltip: HTMLElement): boolean {
+  const statusAnchorId = tooltip.getAttribute("for");
+  if (!statusAnchorId) {
+    return false;
+  }
+
+  const anchor = reviewersSection.querySelector<HTMLElement>(`#${statusAnchorId}`);
+  if (!anchor) {
+    return false;
+  }
+
+  const reviewerContainer = anchor.closest("p, li, .d-flex, .discussion-sidebar-item");
+  const assigneeName = reviewerContainer
+    ?.querySelector<HTMLElement>("[data-assignee-name]")
+    ?.getAttribute("data-assignee-name");
+
+  if (assigneeName && isBotAccountName(assigneeName)) {
+    return true;
+  }
+
+  const reviewerText = normalizeText(reviewerContainer?.textContent || "");
+  return reviewerText.includes("[bot]");
+}
+
+function detectEventFromText(text: string): PrEvent | null {
+  if (MERGED_PATTERNS.some(pattern => pattern.test(text))) {
+    return "merged";
+  }
+
+  if (CHANGES_REQUESTED_PATTERNS.some(pattern => pattern.test(text))) {
+    return "changes_requested";
+  }
+
+  if (REVIEWED_PATTERNS.some(pattern => pattern.test(text))) {
+    return "reviewed";
+  }
+
+  if (REVIEW_REQUEST_PATTERNS.some(pattern => pattern.test(text))) {
+    return "review_requested";
+  }
+
+  if (APPROVED_PATTERNS.some(pattern => pattern.test(text))) {
+    return "approved";
+  }
+
+  if (COMMENTED_PATTERNS.some(pattern => pattern.test(text))) {
+    return "commented";
+  }
+
+  return null;
+}
+
+function getSidebarReviewerStatus(): ReviewerStatus {
+  const reviewersSection = document.querySelector<HTMLElement>(
+    ".discussion-sidebar-item[data-channel-event-name='reviewers_updated'], .discussion-sidebar-item[data-url*='pull_requests%2Fsidebar%2Fshow%2Freviewers']",
+  ) ?? document.querySelector<HTMLElement>("form[aria-label='Select reviewers']")?.closest(".discussion-sidebar-item") as HTMLElement | null;
+
+  if (!reviewersSection) {
+    return "unknown";
+  }
+
+  const hasAwaitingButton = Array.from(
+    reviewersSection.querySelectorAll<HTMLElement>("button[id^='awaiting-review-']"),
+  ).some((button) => {
+    const reviewerContainer = button.closest("p, li, .d-flex, .discussion-sidebar-item");
+    const assigneeName = reviewerContainer
+      ?.querySelector<HTMLElement>("[data-assignee-name]")
+      ?.getAttribute("data-assignee-name");
+    if (assigneeName && isBotAccountName(assigneeName)) {
+      return false;
+    }
+
+    return !normalizeText(reviewerContainer?.textContent || "").includes("[bot]");
+  });
+  const hasAwaitingTooltip = Array.from(
+    reviewersSection.querySelectorAll<HTMLElement>("tool-tip[for^='awaiting-review-']"),
+  ).some((tooltip) => {
+    const text = normalizeText(tooltip.textContent || "");
+    return AWAITING_REVIEW_PATTERN.test(text) && !isBotReviewStatusTooltip(reviewersSection, tooltip);
+  });
+
+  if (hasAwaitingButton || hasAwaitingTooltip) {
+    return "has_reviewers";
+  }
+
+  const bodyText = normalizeText(reviewersSection.textContent || "");
+  if (!bodyText) {
+    return "unknown";
+  }
+
+  if (NO_REVIEWS_PATTERN.test(bodyText)) {
+    return "no_reviewers";
+  }
+
+  // From the provided HTML diffs, reviewer markers are explicit. If markers are absent,
+  // treat as no reviewers to avoid stale review-request history false positives.
+  return "no_reviewers";
+}
+
+function getSidebarApprovalStatus(): ApprovalStatus {
+  const reviewersSection = document.querySelector<HTMLElement>(
+    ".discussion-sidebar-item[data-channel-event-name='reviewers_updated'], .discussion-sidebar-item[data-url*='pull_requests%2Fsidebar%2Fshow%2Freviewers']",
+  ) ?? document.querySelector<HTMLElement>("form[aria-label='Select reviewers']")?.closest(".discussion-sidebar-item") as HTMLElement | null;
+
+  if (!reviewersSection) {
+    return "unknown";
+  }
+
+  const reviewStatusTooltips = Array.from(
+    reviewersSection.querySelectorAll<HTMLElement>("tool-tip[for^='review-status-']"),
+  );
+  const approvedTooltips = reviewStatusTooltips.filter((tooltip) => {
+    if (isBotReviewStatusTooltip(reviewersSection, tooltip)) {
+      return false;
+    }
+
+    const text = normalizeText(tooltip.textContent || "");
+    return APPROVED_CHANGES_PATTERN.test(text);
+  });
+  if (approvedTooltips.length > 0) {
+    return "approved";
+  }
+
+  const hasApprovedStatusAnchor = Boolean(
+    reviewersSection.querySelector("a[id^='review-status-'] .octicon-check.color-fg-success"),
+  );
+  if (hasApprovedStatusAnchor) {
+    return "approved";
+  }
+
+  const bodyText = normalizeText(reviewersSection.textContent || "");
+  if (!bodyText) {
+    return "unknown";
+  }
+
+  if (NO_REVIEWS_PATTERN.test(bodyText)) {
+    return "not_approved";
+  }
+
+  if (reviewersSection.querySelector("button[id^='awaiting-review-'], .reviewers-status-icon")) {
+    return "not_approved";
+  }
+
+  return "unknown";
+}
+
+function getSidebarCommentStatus(): CommentStatus {
+  const reviewersSection = document.querySelector<HTMLElement>(
+    ".discussion-sidebar-item[data-channel-event-name='reviewers_updated'], .discussion-sidebar-item[data-url*='pull_requests%2Fsidebar%2Fshow%2Freviewers']",
+  ) ?? document.querySelector<HTMLElement>("form[aria-label='Select reviewers']")?.closest(".discussion-sidebar-item") as HTMLElement | null;
+
+  if (!reviewersSection) {
+    return "unknown";
+  }
+
+  const commentTooltips = Array.from(
+    reviewersSection.querySelectorAll<HTMLElement>("tool-tip[for^='review-status-']"),
+  ).filter((tooltip) => {
+    if (isBotReviewStatusTooltip(reviewersSection, tooltip)) {
+      return false;
+    }
+
+    const text = normalizeText(tooltip.textContent || "");
+    return REVIEW_COMMENTS_PATTERN.test(text);
+  });
+
+  if (commentTooltips.length > 0) {
+    return "has_comments";
+  }
+
+  return "no_comments";
+}
+
+function collectTimelineEvents(): PrEvent[] {
+  const timelineItems = [...document.querySelectorAll<HTMLElement>(".js-timeline-item, .TimelineItem")];
+
+  const events: PrEvent[] = [];
+
+  for (const item of timelineItems) {
+    if (isBotTimelineItem(item)) {
+      continue;
+    }
+
+    const text = normalizeText(item.textContent || "");
+    if (!text) {
+      continue;
+    }
+
+    const event = detectEventFromText(text);
+    if (event) {
+      events.push(event);
+    }
+  }
+
+  return events;
+}
+
+function getPrTitle(): string | null {
+  const titleNode = document.querySelector<HTMLElement>("bdi.js-issue-title, h1 .markdown-title");
+  const titleText = titleNode?.textContent?.trim();
+  if (titleText) {
+    return titleText;
+  }
+
+  const docTitle = document.title.replace(PR_NUMBER_SUFFIX_PATTERN, "").trim();
+  return docTitle || null;
+}
+
+extensionApi?.runtime?.onMessage?.addListener((message: ScanPrTimelineMessage) => {
+  if (message.type !== "SCAN_PR_TIMELINE") {
+    return;
+  }
+
+  const response: PrTimelineScannedMessage = {
+    type: "PR_TIMELINE_SCANNED",
+    prUrl: message.prUrl,
+    events: collectTimelineEvents(),
+    reviewerStatus: getSidebarReviewerStatus(),
+    approvalStatus: getSidebarApprovalStatus(),
+    commentStatus: getSidebarCommentStatus(),
+    prTitle: getPrTitle(),
+  };
+
+  extensionApi?.runtime?.sendMessage(response).catch((error: unknown) => {
+    console.warn("Failed to return PR timeline scan:", error);
+  });
+});
