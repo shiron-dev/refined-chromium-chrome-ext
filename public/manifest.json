@@ -1,23 +1,42 @@
 {
   "$schema": "https://json.schemastore.org/chrome-manifest",
   "manifest_version": 3,
-  "name": "Chrome Extension Template",
+  "name": "GitHub PR Tab Group Manager",
   "version": "1.0",
-  "description": "Chrome Extension template project (Manifest V3)",
+  "description": "Track GitHub pull requests and auto-group tabs by review status.",
   "permissions": [
-    "clipboardWrite",
-    "activeTab"
+    "activeTab",
+    "tabs",
+    "tabGroups",
+    "storage",
+    "webNavigation"
   ],
   "host_permissions": [
-    "https://example.com/*"
+    "https://github.com/*"
   ],
   "background": {
     "service_worker": "backgrounds_background.js"
   },
+  "commands": {
+    "register-current-pr": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+P",
+        "mac": "Command+Shift+P"
+      },
+      "description": "Register current GitHub pull request for tracking"
+    },
+    "untrack-current-pr": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+U",
+        "mac": "Command+Shift+U"
+      },
+      "description": "Untrack current GitHub pull request"
+    }
+  },
   "content_scripts": [
     {
       "matches": [
-        "https://example.com/*"
+        "https://github.com/*"
       ],
       "js": [
         "content_scripts_main.js"
@@ -31,7 +50,7 @@
     "128": "icon128.png"
   },
   "action": {
-    "default_title": "Extension Template",
+    "default_title": "PR Tab Group Manager",
     "default_popup": "popup.html"
   }
 }
