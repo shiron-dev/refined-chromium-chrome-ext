@@ -1,0 +1,42 @@
+{
+  "name": "chrome-live-group-template",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "build": "BUILD_ENV=development pnpm run build:react && pnpm run build:webpack",
+    "build:prod": "pnpm run build:react && pnpm run build:webpack",
+    "build:react": "react-router build",
+    "build:webpack": "webpack build --mode production --config ./webpack.config.js",
+    "dev": "react-router dev",
+    "start": "react-router-serve ./build/server/index.js",
+    "lint": "pnpm run lint:manifest && eslint .",
+    "lint:manifest": "ajv validate -s schemas/chrome-manifest.schema.json -d public/manifest.json --strict=false --validate-formats=false",
+    "lint:fix": "eslint . --fix",
+    "typecheck": "react-router typegen && tsc"
+  },
+  "dependencies": {
+    "@react-router/node": "^7.13.1",
+    "@react-router/serve": "^7.13.1",
+    "isbot": "^5.1.36",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "react-router": "^7.13.1"
+  },
+  "devDependencies": {
+    "@react-router/dev": "^7.13.1",
+    "@shiron-dev/eslint-config": "^2.1.5",
+    "@types/node": "^20.19.37",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "ajv-cli": "^5.0.0",
+    "copy-webpack-plugin": "^13.0.1",
+    "eslint-plugin-format": "^1.5.0",
+    "react-router-devtools": "^1.1.10",
+    "ts-loader": "^9.5.4",
+    "typescript": "^5.9.3",
+    "vite": "^5.4.21",
+    "vite-tsconfig-paths": "^5.1.4",
+    "webpack": "^5.105.4",
+    "webpack-cli": "^6.0.1"
+  }
+}

@@ -1,0 +1,8 @@
+shellEmulator: true
+trustPolicy: no-downgrade
+
+ignoredBuiltDependencies:
+  - esbuild
+
+onlyBuiltDependencies:
+  - unrs-resolver
