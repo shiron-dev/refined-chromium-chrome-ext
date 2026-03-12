@@ -1,6 +1,6 @@
 export {};
 
-type PrEvent = "review_requested" | "approved" | "commented" | "merged";
+type PrEvent = "review_requested" | "approved" | "commented" | "reviewed" | "changes_requested" | "merged";
 type ReviewerStatus = "has_reviewers" | "no_reviewers" | "unknown";
 type ApprovalStatus = "approved" | "not_approved" | "unknown";
 type CommentStatus = "has_comments" | "no_comments" | "unknown";
@@ -40,10 +40,17 @@ const APPROVED_PATTERNS = [
   /approved$/,
   /approved this pull request/,
 ];
+const REVIEWED_PATTERNS = [
+  /reviewed/,
+];
 const COMMENTED_PATTERNS = [
   /left a comment/,
   /commented/,
   /left review comments/,
+];
+const CHANGES_REQUESTED_PATTERNS = [
+  /requested changes/,
+  /request(ed)? changes?/,
 ];
 const MERGED_PATTERNS = [
   /merged this pull request/,
@@ -105,6 +112,14 @@ function isBotReviewStatusTooltip(reviewersSection: HTMLElement, tooltip: HTMLEl
 function detectEventFromText(text: string): PrEvent | null {
   if (MERGED_PATTERNS.some(pattern => pattern.test(text))) {
     return "merged";
+  }
+
+  if (CHANGES_REQUESTED_PATTERNS.some(pattern => pattern.test(text))) {
+    return "changes_requested";
+  }
+
+  if (REVIEWED_PATTERNS.some(pattern => pattern.test(text))) {
+    return "reviewed";
   }
 
   if (REVIEW_REQUEST_PATTERNS.some(pattern => pattern.test(text))) {

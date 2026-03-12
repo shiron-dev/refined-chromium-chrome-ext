@@ -12,7 +12,8 @@
     "lint": "pnpm run lint:manifest && eslint .",
     "lint:manifest": "ajv validate -s schemas/chrome-manifest.schema.json -d public/manifest.json --strict=false --validate-formats=false",
     "lint:fix": "eslint . --fix",
-    "typecheck": "react-router typegen && tsc"
+    "typecheck": "react-router typegen && tsc",
+    "test": "node src/content_scripts/tests/test-detection.mjs"
   },
   "dependencies": {
     "@react-router/node": "^7.13.1",
@@ -31,11 +32,13 @@
     "ajv-cli": "^5.0.0",
     "copy-webpack-plugin": "^13.0.1",
     "eslint-plugin-format": "^1.5.0",
+    "jsdom": "^28.1.0",
     "react-router-devtools": "^1.1.10",
     "ts-loader": "^9.5.4",
     "typescript": "^5.9.3",
     "vite": "^5.4.21",
     "vite-tsconfig-paths": "^5.1.4",
+    "vitest": "^4.1.0",
     "webpack": "^5.105.4",
     "webpack-cli": "^6.0.1"
   }
