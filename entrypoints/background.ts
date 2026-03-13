@@ -153,7 +153,7 @@ const PR_STATE_ORDER: Record<PrState, number> = {
   merged: 3,
 };
 
-const extensionApi = (globalThis as { chrome?: ExtensionApiLike }).chrome;
+const extensionApi = (globalThis as unknown as { chrome?: ExtensionApiLike }).chrome;
 const REGISTER_CURRENT_PR_COMMAND = "register-current-pr";
 const UNTRACK_CURRENT_PR_COMMAND = "untrack-current-pr";
 
