@@ -10,6 +10,14 @@ interface TrackedPrEntry {
   title: string | null
 }
 
+interface ModuleSettings {
+  githubPrManager: { enabled: boolean }
+}
+
+const DEFAULT_MODULE_SETTINGS: ModuleSettings = {
+  githubPrManager: { enabled: true },
+};
+
 interface TrackedPrItem {
   prUrl: string
   state: PrState
@@ -56,13 +64,24 @@ interface PrTimelineScannedMessage {
   prTitle: string | null
 }
 
+interface GetModuleSettingsMessage {
+  type: "GET_MODULE_SETTINGS"
+}
+
+interface SetModuleSettingsMessage {
+  type: "SET_MODULE_SETTINGS"
+  settings: ModuleSettings
+}
+
 type RuntimeMessage = RegisterCurrentPrMessage
   | UntrackCurrentPrMessage
   | ReloadTrackedPrsMessage
   | ActivatePrTabMessage
   | GetPopupStateMessage
   | ScanPrTimelineMessage
-  | PrTimelineScannedMessage;
+  | PrTimelineScannedMessage
+  | GetModuleSettingsMessage
+  | SetModuleSettingsMessage;
 
 interface BrowserTab {
   id?: number
@@ -131,6 +150,7 @@ interface ExtensionApiLike {
 }
 
 const STORAGE_KEY = "trackedPrs";
+const MODULE_SETTINGS_KEY = "moduleSettings";
 const GITHUB_PR_URL_PATTERN = /^\/([^/]+)\/([^/]+)\/pull\/(\d+)(?:\/.*)?$/;
 
 const GROUP_TITLE_BY_STATE: Record<PrState, string> = {
@@ -229,6 +249,32 @@ async function getTrackedPrs(): Promise<Record<string, TrackedPrEntry>> {
 
 async function setTrackedPrs(trackedPrs: Record<string, TrackedPrEntry>): Promise<void> {
   await extensionApi?.storage?.local?.set({ [STORAGE_KEY]: trackedPrs });
+}
+
+async function getModuleSettings(): Promise<ModuleSettings> {
+  if (!extensionApi?.storage?.local) {
+    return DEFAULT_MODULE_SETTINGS;
+  }
+
+  const data = await extensionApi.storage.local.get(MODULE_SETTINGS_KEY);
+  const raw = data?.[MODULE_SETTINGS_KEY];
+
+  if (!raw || typeof raw !== "object") {
+    return DEFAULT_MODULE_SETTINGS;
+  }
+
+  const stored = raw as Partial<ModuleSettings>;
+  return {
+    githubPrManager: {
+      enabled: typeof stored.githubPrManager?.enabled === "boolean"
+        ? stored.githubPrManager.enabled
+        : DEFAULT_MODULE_SETTINGS.githubPrManager.enabled,
+    },
+  };
+}
+
+async function setModuleSettings(settings: ModuleSettings): Promise<void> {
+  await extensionApi?.storage?.local?.set({ [MODULE_SETTINGS_KEY]: settings });
 }
 
 function applyPrEvents(events: PrEvent[]): PrState {
@@ -552,10 +598,24 @@ async function handleActivatePrTab(message: ActivatePrTabMessage): Promise<{
   return { ok: true };
 }
 
+async function handleGetModuleSettings(): Promise<{ settings: ModuleSettings }> {
+  return { settings: await getModuleSettings() };
+}
+
+async function handleSetModuleSettings(message: SetModuleSettingsMessage): Promise<{ ok: boolean }> {
+  await setModuleSettings(message.settings);
+  return { ok: true };
+}
+
 async function handleTimelineScanned(
   message: PrTimelineScannedMessage,
   sender: MessageSenderLike,
 ): Promise<void> {
+  const moduleSettings = await getModuleSettings();
+  if (!moduleSettings.githubPrManager.enabled) {
+    return;
+  }
+
   const prUrl = normalizePrUrl(message.prUrl);
   const tabId = sender.tab?.id;
   const windowId = sender.tab?.windowId;
@@ -683,10 +743,37 @@ export default defineBackground(() => {
       handleTimelineScanned(message, sender).catch((error: unknown) => console.error(error));
     }
 
+    if (message.type === "GET_MODULE_SETTINGS") {
+      handleGetModuleSettings()
+        .then(sendResponse)
+        .catch((error: unknown) => {
+          console.error(error);
+          sendResponse({ settings: DEFAULT_MODULE_SETTINGS });
+        });
+
+      return true;
+    }
+
+    if (message.type === "SET_MODULE_SETTINGS") {
+      handleSetModuleSettings(message)
+        .then(sendResponse)
+        .catch((error: unknown) => {
+          console.error(error);
+          sendResponse({ ok: false });
+        });
+
+      return true;
+    }
+
     return false;
   });
 
   extensionApi?.commands?.onCommand?.addListener(async (command: string) => {
+    const cmdModuleSettings = await getModuleSettings();
+    if (!cmdModuleSettings.githubPrManager.enabled) {
+      return;
+    }
+
     if (command === REGISTER_CURRENT_PR_COMMAND) {
       try {
         await handleRegisterCurrentPr();
@@ -710,6 +797,11 @@ export default defineBackground(() => {
 
   extensionApi?.webNavigation?.onCompleted?.addListener(async (details: WebNavigationDetailsLike) => {
     if (details.frameId !== 0 || details.tabId < 0) {
+      return;
+    }
+
+    const navModuleSettings = await getModuleSettings();
+    if (!navModuleSettings.githubPrManager.enabled) {
       return;
     }
 

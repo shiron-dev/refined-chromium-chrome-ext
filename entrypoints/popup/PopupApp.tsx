@@ -43,6 +43,10 @@ interface UiStatus {
   message: string
 }
 
+interface ModuleSettings {
+  githubPrManager: { enabled: boolean }
+}
+
 interface ExtensionApiLike {
   runtime?: {
     sendMessage: (message: unknown) => Promise<any>
@@ -113,6 +117,23 @@ async function activatePrTab(prUrl: string): Promise<{ ok: boolean }> {
   return extensionApi.runtime.sendMessage({ type: "ACTIVATE_PR_TAB", prUrl }) as Promise<{ ok: boolean }>;
 }
 
+async function fetchModuleSettings(): Promise<ModuleSettings> {
+  if (!extensionApi?.runtime) {
+    return { githubPrManager: { enabled: true } };
+  }
+
+  const response = await extensionApi.runtime.sendMessage({ type: "GET_MODULE_SETTINGS" }) as Partial<{ settings: ModuleSettings }>;
+  return response.settings ?? { githubPrManager: { enabled: true } };
+}
+
+async function saveModuleSettings(settings: ModuleSettings): Promise<void> {
+  if (!extensionApi?.runtime) {
+    return;
+  }
+
+  await extensionApi.runtime.sendMessage({ type: "SET_MODULE_SETTINGS", settings });
+}
+
 const baseCardStyle: CSSProperties = {
   border: "1px solid #d1d5db",
   borderRadius: 10,
@@ -157,7 +178,70 @@ function parsePrUrl(prUrl: string): { repoKey: string, prNumber: string | null }
   }
 }
 
-export default function PopupApp() {
+function HomeScreen({
+  moduleSettings,
+  onToggleGithubPr,
+  onNavigateToGithubPr,
+}: {
+  moduleSettings: ModuleSettings
+  onToggleGithubPr: (enabled: boolean) => void
+  onNavigateToGithubPr: () => void
+}) {
+  const enabled = moduleSettings.githubPrManager.enabled;
+
+  return (
+    <main style={{ padding: 16, fontFamily: "'Helvetica Neue', Arial, sans-serif", color: "#111827" }}>
+      <h1 style={{ fontSize: 18, margin: "0 0 16px" }}>拡張機能モジュール</h1>
+
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={onNavigateToGithubPr}
+        onKeyDown={(e) => { if (e.key === "Enter") onNavigateToGithubPr(); }}
+        style={{
+          ...baseCardStyle,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          cursor: "pointer",
+          gap: 12,
+        }}
+      >
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <p style={{ margin: 0, fontSize: 14, fontWeight: 600 }}>GitHub PR Manager</p>
+          <p style={{ margin: "3px 0 0", fontSize: 12, color: "#6b7280" }}>
+            GitHub PRを追跡し、レビュー状態に応じてタブを自動グループ化します。
+          </p>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleGithubPr(!enabled);
+            }}
+            style={{
+              padding: "4px 10px",
+              borderRadius: 6,
+              border: "1px solid #d1d5db",
+              background: enabled ? "#111827" : "#f3f4f6",
+              color: enabled ? "#ffffff" : "#6b7280",
+              cursor: "pointer",
+              fontSize: 12,
+              fontWeight: 600,
+              whiteSpace: "nowrap",
+            }}
+          >
+            {enabled ? "有効" : "無効"}
+          </button>
+          <span style={{ fontSize: 16, color: "#9ca3af" }}>›</span>
+        </div>
+      </div>
+    </main>
+  );
+}
+
+function GithubPrScreen({ onBack }: { onBack: () => void }) {
   const [trackedCount, setTrackedCount] = useState(0);
   const [isCurrentTabPr, setIsCurrentTabPr] = useState(false);
   const [isCurrentTabTracked, setIsCurrentTabTracked] = useState(false);
@@ -283,7 +367,25 @@ export default function PopupApp() {
 
   return (
     <main style={{ padding: 16, fontFamily: "'Helvetica Neue', Arial, sans-serif", color: "#111827" }}>
-      <h1 style={{ fontSize: 18, margin: "0 0 12px" }}>GitHub PR Tab Group Manager</h1>
+      <div style={{ display: "flex", alignItems: "center", marginBottom: 12, gap: 8 }}>
+        <button
+          type="button"
+          onClick={onBack}
+          style={{
+            background: "none",
+            border: "none",
+            padding: 0,
+            cursor: "pointer",
+            fontSize: 14,
+            color: "#374151",
+            display: "flex",
+            alignItems: "center",
+          }}
+        >
+          ←
+        </button>
+        <h1 style={{ fontSize: 18, margin: 0 }}>GitHub PR Manager</h1>
+      </div>
 
       <section style={{ ...baseCardStyle, marginBottom: 12 }}>
         <p style={{ margin: "0 0 8px", fontSize: 13 }}>
@@ -480,5 +582,39 @@ export default function PopupApp() {
               )}
       </section>
     </main>
+  );
+}
+
+type PopupView = "home" | "githubPr";
+
+export default function PopupApp() {
+  const [view, setView] = useState<PopupView>("home");
+  const [moduleSettings, setModuleSettings] = useState<ModuleSettings>({
+    githubPrManager: { enabled: true },
+  });
+
+  useEffect(() => {
+    fetchModuleSettings()
+      .then(setModuleSettings)
+      .catch((error: unknown) => console.error(error));
+  }, []);
+
+  const handleToggleGithubPr = useCallback(async (enabled: boolean) => {
+    const next: ModuleSettings = { githubPrManager: { enabled } };
+    setModuleSettings(next);
+    await saveModuleSettings(next);
+  }, []);
+
+  if (view === "githubPr") {
+    return <GithubPrScreen onBack={() => setView("home")} />;
+  }
+
+  return (
+    <HomeScreen
+      moduleSettings={moduleSettings}
+      onToggleGithubPr={enabled =>
+        handleToggleGithubPr(enabled).catch((error: unknown) => console.error(error))}
+      onNavigateToGithubPr={() => setView("githubPr")}
+    />
   );
 }
