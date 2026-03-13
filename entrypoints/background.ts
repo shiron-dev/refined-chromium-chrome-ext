@@ -1,5 +1,3 @@
-export {};
-
 type PrState = "working" | "reviewing" | "merge_waiting" | "merged";
 type PrEvent = "review_requested" | "approved" | "commented" | "merged";
 type ReviewerStatus = "has_reviewers" | "no_reviewers" | "unknown";
@@ -155,7 +153,7 @@ const PR_STATE_ORDER: Record<PrState, number> = {
   merged: 3,
 };
 
-const extensionApi = (globalThis as { chrome?: ExtensionApiLike }).chrome;
+const extensionApi = (globalThis as unknown as { chrome?: ExtensionApiLike }).chrome;
 const REGISTER_CURRENT_PR_COMMAND = "register-current-pr";
 const UNTRACK_CURRENT_PR_COMMAND = "untrack-current-pr";
 
@@ -210,8 +208,8 @@ function isConversationView(rawUrl?: string): boolean {
   }
 
   // Check if the path ends at the pull number (no /files, /commits, etc.)
-  const pathAfterNumber = parsed.pathname.replace(match[0], '');
-  return pathAfterNumber === '';
+  const pathAfterNumber = parsed.pathname.replace(match[0], "");
+  return pathAfterNumber === "";
 }
 
 async function getTrackedPrs(): Promise<Record<string, TrackedPrEntry>> {
@@ -612,117 +610,119 @@ async function handleTimelineScanned(
   await moveTabToStateGroup(tabId, windowId, nextState);
 }
 
-extensionApi?.runtime?.onInstalled?.addListener((details: InstalledDetailsLike) => {
-  if (details.reason === "install") {
-    console.warn("GitHub PR Tab Group Manager installed");
-  }
-});
+export default defineBackground(() => {
+  extensionApi?.runtime?.onInstalled?.addListener((details: InstalledDetailsLike) => {
+    if (details.reason === "install") {
+      console.warn("GitHub PR Tab Group Manager installed");
+    }
+  });
 
-extensionApi?.runtime?.onMessage?.addListener((message, sender, sendResponse) => {
-  if (message.type === "REGISTER_CURRENT_PR") {
-    handleRegisterCurrentPr()
-      .then(sendResponse)
-      .catch((error: unknown) => {
-        console.error(error);
-        sendResponse({ ok: false, reason: "not_pr_page", trackedCount: 0 });
-      });
-
-    return true;
-  }
-
-  if (message.type === "UNTRACK_CURRENT_PR") {
-    handleUntrackCurrentPr()
-      .then(sendResponse)
-      .catch((error: unknown) => {
-        console.error(error);
-        sendResponse({ ok: false, reason: "not_pr_page", trackedCount: 0 });
-      });
-
-    return true;
-  }
-
-  if (message.type === "RELOAD_TRACKED_PRS") {
-    handleReloadTrackedPrs()
-      .then(sendResponse)
-      .catch((error: unknown) => {
-        console.error(error);
-        sendResponse({ ok: false, reloadedTabCount: 0 });
-      });
-
-    return true;
-  }
-
-  if (message.type === "ACTIVATE_PR_TAB") {
-    handleActivatePrTab(message)
-      .then(sendResponse)
-      .catch((error: unknown) => {
-        console.error(error);
-        sendResponse({ ok: false });
-      });
-
-    return true;
-  }
-
-  if (message.type === "GET_POPUP_STATE") {
-    handleGetPopupState()
-      .then(sendResponse)
-      .catch((error: unknown) => {
-        console.error(error);
-        sendResponse({
-          trackedCount: 0,
-          isCurrentTabPr: false,
-          isCurrentTabTracked: false,
-          currentPrUrl: null,
-          trackedPrItems: [],
+  extensionApi?.runtime?.onMessage?.addListener((message, sender, sendResponse) => {
+    if (message.type === "REGISTER_CURRENT_PR") {
+      handleRegisterCurrentPr()
+        .then(sendResponse)
+        .catch((error: unknown) => {
+          console.error(error);
+          sendResponse({ ok: false, reason: "not_pr_page", trackedCount: 0 });
         });
-      });
 
-    return true;
-  }
-
-  if (message.type === "PR_TIMELINE_SCANNED") {
-    handleTimelineScanned(message, sender).catch((error: unknown) => console.error(error));
-  }
-
-  return false;
-});
-
-extensionApi?.commands?.onCommand?.addListener(async (command: string) => {
-  if (command === REGISTER_CURRENT_PR_COMMAND) {
-    try {
-      await handleRegisterCurrentPr();
-    }
-    catch (error: unknown) {
-      console.error("Failed to register current PR from shortcut:", error);
+      return true;
     }
 
-    return;
-  }
+    if (message.type === "UNTRACK_CURRENT_PR") {
+      handleUntrackCurrentPr()
+        .then(sendResponse)
+        .catch((error: unknown) => {
+          console.error(error);
+          sendResponse({ ok: false, reason: "not_pr_page", trackedCount: 0 });
+        });
 
-  if (command === UNTRACK_CURRENT_PR_COMMAND) {
-    try {
-      await handleUntrackCurrentPr();
+      return true;
     }
-    catch (error: unknown) {
-      console.error("Failed to untrack current PR from shortcut:", error);
+
+    if (message.type === "RELOAD_TRACKED_PRS") {
+      handleReloadTrackedPrs()
+        .then(sendResponse)
+        .catch((error: unknown) => {
+          console.error(error);
+          sendResponse({ ok: false, reloadedTabCount: 0 });
+        });
+
+      return true;
     }
-  }
-});
 
-extensionApi?.webNavigation?.onCompleted?.addListener(async (details: WebNavigationDetailsLike) => {
-  if (details.frameId !== 0 || details.tabId < 0) {
-    return;
-  }
+    if (message.type === "ACTIVATE_PR_TAB") {
+      handleActivatePrTab(message)
+        .then(sendResponse)
+        .catch((error: unknown) => {
+          console.error(error);
+          sendResponse({ ok: false });
+        });
 
-  const prUrl = normalizePrUrl(details.url);
-  if (!prUrl) {
-    return;
-  }
+      return true;
+    }
 
-  const trackedPrs = await getTrackedPrs();
-  if (!trackedPrs[prUrl]) {
-    return;
-  }
+    if (message.type === "GET_POPUP_STATE") {
+      handleGetPopupState()
+        .then(sendResponse)
+        .catch((error: unknown) => {
+          console.error(error);
+          sendResponse({
+            trackedCount: 0,
+            isCurrentTabPr: false,
+            isCurrentTabTracked: false,
+            currentPrUrl: null,
+            trackedPrItems: [],
+          });
+        });
 
-  await sendScanRequestToTab(details.tabId, prUrl);
+      return true;
+    }
+
+    if (message.type === "PR_TIMELINE_SCANNED") {
+      handleTimelineScanned(message, sender).catch((error: unknown) => console.error(error));
+    }
+
+    return false;
+  });
+
+  extensionApi?.commands?.onCommand?.addListener(async (command: string) => {
+    if (command === REGISTER_CURRENT_PR_COMMAND) {
+      try {
+        await handleRegisterCurrentPr();
+      }
+      catch (error: unknown) {
+        console.error("Failed to register current PR from shortcut:", error);
+      }
+
+      return;
+    }
+
+    if (command === UNTRACK_CURRENT_PR_COMMAND) {
+      try {
+        await handleUntrackCurrentPr();
+      }
+      catch (error: unknown) {
+        console.error("Failed to untrack current PR from shortcut:", error);
+      }
+    }
+  });
+
+  extensionApi?.webNavigation?.onCompleted?.addListener(async (details: WebNavigationDetailsLike) => {
+    if (details.frameId !== 0 || details.tabId < 0) {
+      return;
+    }
+
+    const prUrl = normalizePrUrl(details.url);
+    if (!prUrl) {
+      return;
+    }
+
+    const trackedPrs = await getTrackedPrs();
+    if (!trackedPrs[prUrl]) {
+      return;
+    }
+
+    await sendScanRequestToTab(details.tabId, prUrl);
+  });
 });

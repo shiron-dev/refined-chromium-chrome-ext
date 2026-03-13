@@ -10,7 +10,8 @@
     "baseUrl": ".",
     "rootDirs": [
       ".",
-      "./.react-router/types"
+      "./.react-router/types",
+      "./.wxt/types"
     ],
     "module": "ES2022",
     "moduleResolution": "bundler",
@@ -22,7 +23,8 @@
     "resolveJsonModule": true,
     "types": [
       "node",
-      "vite/client"
+      "vite/client",
+      "chrome"
     ],
     "strict": true,
     "noEmit": true,
@@ -34,6 +36,7 @@
     "**/*",
     "**/.server/**/*",
     "**/.client/**/*",
-    ".react-router/types/**/*"
+    ".react-router/types/**/*",
+    ".wxt/types/**/*"
   ]
 }

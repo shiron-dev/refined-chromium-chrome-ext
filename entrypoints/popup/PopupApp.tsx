@@ -257,7 +257,7 @@ export default function PopupApp() {
     }
 
     const query = searchQuery.toLowerCase();
-    return trackedPrItems.filter(item => {
+    return trackedPrItems.filter((item) => {
       const { prNumber } = parsePrUrl(item.prUrl);
       const titleMatch = item.title?.toLowerCase().includes(query) ?? false;
       const prNumberMatch = prNumber?.includes(query) ?? false;
@@ -379,7 +379,7 @@ export default function PopupApp() {
           type="text"
           placeholder="タイトルまたはPR番号で検索..."
           value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
+          onChange={e => setSearchQuery(e.target.value)}
           style={{
             width: "100%",
             border: "1px solid #d1d5db",
@@ -399,85 +399,85 @@ export default function PopupApp() {
                 <p style={{ margin: 0, fontSize: 12, color: "#6b7280" }}>検索条件に合致するPRが見つかりません。</p>
               )
             : (
-              <div style={{ display: "grid", gap: 10 }}>
-                {groupedTrackedPrItems.map(([repoKey, items]) => (
-                  <section key={repoKey} style={{ border: "1px solid #e5e7eb", borderRadius: 8, padding: 8 }}>
-                    <h3 style={{ margin: "0 0 8px", fontSize: 12, color: "#111827" }}>
-                      {repoKey}
-                      {" "}
-                      (
-                      {items.length}
-                      )
-                    </h3>
-                    <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gap: 8 }}>
-                      {items.map((item) => {
-                        const { prNumber } = parsePrUrl(item.prUrl);
+                <div style={{ display: "grid", gap: 10 }}>
+                  {groupedTrackedPrItems.map(([repoKey, items]) => (
+                    <section key={repoKey} style={{ border: "1px solid #e5e7eb", borderRadius: 8, padding: 8 }}>
+                      <h3 style={{ margin: "0 0 8px", fontSize: 12, color: "#111827" }}>
+                        {repoKey}
+                        {" "}
+                        (
+                        {items.length}
+                        )
+                      </h3>
+                      <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gap: 8 }}>
+                        {items.map((item) => {
+                          const { prNumber } = parsePrUrl(item.prUrl);
 
-                        return (
-                          <li key={item.prUrl} style={{ border: "1px solid #e5e7eb", borderRadius: 8, padding: 8 }}>
-                            <a
-                              href={item.prUrl}
-                              target="_blank"
-                              rel="noreferrer"
-                              style={{ display: "block", fontSize: 12, color: "#1d4ed8", wordBreak: "break-all", fontWeight: 600 }}
-                            >
-                              {item.title ?? (prNumber ? `#${prNumber}` : item.prUrl)}
-                            </a>
-                            <p style={{ margin: "2px 0 0", fontSize: 11, color: "#6b7280", wordBreak: "break-all" }}>
-                              {prNumber ? `#${prNumber}` : item.prUrl}
-                            </p>
-                            <p style={{ margin: "6px 0 0", fontSize: 12, color: "#374151" }}>
-                              状態:
-                              {" "}
-                              {stateLabelByKey[item.state]}
-                            </p>
-                            <p style={{
-                              margin: "2px 0 0",
-                              fontSize: 11,
-                              color: item.isConversationOpen ? "#166534" : (item.otherViewTabCount > 0 ? "#f59e0b" : "#6b7280"),
-                            }}
-                            >
-                              タブ:
-                              {" "}
-                              {item.isConversationOpen
-                                ? `開いている (${item.conversationTabCount})`
-                                : (item.otherViewTabCount > 0 ? `他のビューで開いている (${item.otherViewTabCount})` : "未オープン")}
-                            </p>
-                            {(item.isConversationOpen || item.otherViewTabCount > 0) && (
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  activatePrTab(item.prUrl).catch((error: unknown) => console.error(error));
-                                }}
-                                style={{
-                                  width: "100%",
-                                  border: "1px solid #d1d5db",
-                                  borderRadius: 6,
-                                  padding: "6px 8px",
-                                  marginTop: 6,
-                                  background: "#f3f4f6",
-                                  color: "#374151",
-                                  cursor: "pointer",
-                                  fontWeight: 500,
-                                  fontSize: 11,
-                                }}
+                          return (
+                            <li key={item.prUrl} style={{ border: "1px solid #e5e7eb", borderRadius: 8, padding: 8 }}>
+                              <a
+                                href={item.prUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                style={{ display: "block", fontSize: 12, color: "#1d4ed8", wordBreak: "break-all", fontWeight: 600 }}
                               >
-                                タブをアクティブ化
-                              </button>
-                            )}
-                            <p style={{ margin: "2px 0 0", fontSize: 11, color: "#6b7280" }}>
-                              更新:
-                              {" "}
-                              {new Date(item.updatedAt).toLocaleString("ja-JP")}
-                            </p>
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  </section>
-                ))}
-              </div>
-            )}
+                                {item.title ?? (prNumber ? `#${prNumber}` : item.prUrl)}
+                              </a>
+                              <p style={{ margin: "2px 0 0", fontSize: 11, color: "#6b7280", wordBreak: "break-all" }}>
+                                {prNumber ? `#${prNumber}` : item.prUrl}
+                              </p>
+                              <p style={{ margin: "6px 0 0", fontSize: 12, color: "#374151" }}>
+                                状態:
+                                {" "}
+                                {stateLabelByKey[item.state]}
+                              </p>
+                              <p style={{
+                                margin: "2px 0 0",
+                                fontSize: 11,
+                                color: item.isConversationOpen ? "#166534" : (item.otherViewTabCount > 0 ? "#f59e0b" : "#6b7280"),
+                              }}
+                              >
+                                タブ:
+                                {" "}
+                                {item.isConversationOpen
+                                  ? `開いている (${item.conversationTabCount})`
+                                  : (item.otherViewTabCount > 0 ? `他のビューで開いている (${item.otherViewTabCount})` : "未オープン")}
+                              </p>
+                              {(item.isConversationOpen || item.otherViewTabCount > 0) && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    activatePrTab(item.prUrl).catch((error: unknown) => console.error(error));
+                                  }}
+                                  style={{
+                                    width: "100%",
+                                    border: "1px solid #d1d5db",
+                                    borderRadius: 6,
+                                    padding: "6px 8px",
+                                    marginTop: 6,
+                                    background: "#f3f4f6",
+                                    color: "#374151",
+                                    cursor: "pointer",
+                                    fontWeight: 500,
+                                    fontSize: 11,
+                                  }}
+                                >
+                                  タブをアクティブ化
+                                </button>
+                              )}
+                              <p style={{ margin: "2px 0 0", fontSize: 11, color: "#6b7280" }}>
+                                更新:
+                                {" "}
+                                {new Date(item.updatedAt).toLocaleString("ja-JP")}
+                              </p>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    </section>
+                  ))}
+                </div>
+              )}
       </section>
     </main>
   );

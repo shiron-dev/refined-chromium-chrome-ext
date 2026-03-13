@@ -1,0 +1,33 @@
+import { defineConfig } from "wxt";
+
+export default defineConfig({
+  modules: ["@wxt-dev/module-react"],
+  manifest: {
+    name: "GitHub PR Tab Group Manager",
+    version: "1.0",
+    description: "Track GitHub pull requests and auto-group tabs by review status.",
+    permissions: ["activeTab", "tabs", "tabGroups", "storage", "webNavigation"],
+    host_permissions: ["https://github.com/*"],
+    icons: {
+      16: "icon16.png",
+      48: "icon48.png",
+      128: "icon128.png",
+    },
+    commands: {
+      "register-current-pr": {
+        suggested_key: {
+          default: "Ctrl+Shift+P",
+          mac: "Command+Shift+P",
+        },
+        description: "Register current GitHub pull request for tracking",
+      },
+      "untrack-current-pr": {
+        suggested_key: {
+          default: "Ctrl+Shift+U",
+          mac: "Command+Shift+U",
+        },
+        description: "Untrack current GitHub pull request",
+      },
+    },
+  },
+});

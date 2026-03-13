@@ -1,5 +1,3 @@
-export {};
-
 type PrEvent = "review_requested" | "approved" | "commented" | "reviewed" | "changes_requested" | "merged";
 type ReviewerStatus = "has_reviewers" | "no_reviewers" | "unknown";
 type ApprovalStatus = "approved" | "not_approved" | "unknown";
@@ -78,10 +76,7 @@ function isBotTimelineItem(item: HTMLElement): boolean {
     return true;
   }
 
-  const labelTexts = Array.from(
-    item.querySelectorAll<HTMLElement>(".Label--secondary, .IssueLabel"),
-    node => normalizeText(node.textContent || ""),
-  );
+  const labelTexts = Array.from(item.querySelectorAll<HTMLElement>(".Label--secondary, .IssueLabel"), node => normalizeText(node.textContent || ""));
   return labelTexts.includes("bot");
 }
 
@@ -146,9 +141,7 @@ function getSidebarReviewerStatus(): ReviewerStatus {
     return "unknown";
   }
 
-  const hasAwaitingButton = Array.from(
-    reviewersSection.querySelectorAll<HTMLElement>("button[id^='awaiting-review-']"),
-  ).some((button) => {
+  const hasAwaitingButton = [...reviewersSection.querySelectorAll<HTMLElement>("button[id^='awaiting-review-']")].some((button) => {
     const reviewerContainer = button.closest("p, li, .d-flex, .discussion-sidebar-item");
     const assigneeName = reviewerContainer
       ?.querySelector<HTMLElement>("[data-assignee-name]")
@@ -159,9 +152,7 @@ function getSidebarReviewerStatus(): ReviewerStatus {
 
     return !normalizeText(reviewerContainer?.textContent || "").includes("[bot]");
   });
-  const hasAwaitingTooltip = Array.from(
-    reviewersSection.querySelectorAll<HTMLElement>("tool-tip[for^='awaiting-review-']"),
-  ).some((tooltip) => {
+  const hasAwaitingTooltip = [...reviewersSection.querySelectorAll<HTMLElement>("tool-tip[for^='awaiting-review-']")].some((tooltip) => {
     const text = normalizeText(tooltip.textContent || "");
     return AWAITING_REVIEW_PATTERN.test(text) && !isBotReviewStatusTooltip(reviewersSection, tooltip);
   });
@@ -193,9 +184,7 @@ function getSidebarApprovalStatus(): ApprovalStatus {
     return "unknown";
   }
 
-  const reviewStatusTooltips = Array.from(
-    reviewersSection.querySelectorAll<HTMLElement>("tool-tip[for^='review-status-']"),
-  );
+  const reviewStatusTooltips = [...reviewersSection.querySelectorAll<HTMLElement>("tool-tip[for^='review-status-']")];
   const approvedTooltips = reviewStatusTooltips.filter((tooltip) => {
     if (isBotReviewStatusTooltip(reviewersSection, tooltip)) {
       return false;
@@ -240,9 +229,7 @@ function getSidebarCommentStatus(): CommentStatus {
     return "unknown";
   }
 
-  const commentTooltips = Array.from(
-    reviewersSection.querySelectorAll<HTMLElement>("tool-tip[for^='review-status-']"),
-  ).filter((tooltip) => {
+  const commentTooltips = [...reviewersSection.querySelectorAll<HTMLElement>("tool-tip[for^='review-status-']")].filter((tooltip) => {
     if (isBotReviewStatusTooltip(reviewersSection, tooltip)) {
       return false;
     }
@@ -293,22 +280,28 @@ function getPrTitle(): string | null {
   return docTitle || null;
 }
 
-extensionApi?.runtime?.onMessage?.addListener((message: ScanPrTimelineMessage) => {
-  if (message.type !== "SCAN_PR_TIMELINE") {
-    return;
-  }
+export default defineContentScript({
+  matches: ["https://github.com/*"],
+  runAt: "document_end",
+  main() {
+    extensionApi?.runtime?.onMessage?.addListener((message: ScanPrTimelineMessage) => {
+      if (message.type !== "SCAN_PR_TIMELINE") {
+        return;
+      }
 
-  const response: PrTimelineScannedMessage = {
-    type: "PR_TIMELINE_SCANNED",
-    prUrl: message.prUrl,
-    events: collectTimelineEvents(),
-    reviewerStatus: getSidebarReviewerStatus(),
-    approvalStatus: getSidebarApprovalStatus(),
-    commentStatus: getSidebarCommentStatus(),
-    prTitle: getPrTitle(),
-  };
+      const response: PrTimelineScannedMessage = {
+        type: "PR_TIMELINE_SCANNED",
+        prUrl: message.prUrl,
+        events: collectTimelineEvents(),
+        reviewerStatus: getSidebarReviewerStatus(),
+        approvalStatus: getSidebarApprovalStatus(),
+        commentStatus: getSidebarCommentStatus(),
+        prTitle: getPrTitle(),
+      };
 
-  extensionApi?.runtime?.sendMessage(response).catch((error: unknown) => {
-    console.warn("Failed to return PR timeline scan:", error);
-  });
+      extensionApi?.runtime?.sendMessage(response).catch((error: unknown) => {
+        console.warn("Failed to return PR timeline scan:", error);
+      });
+    });
+  },
 });
