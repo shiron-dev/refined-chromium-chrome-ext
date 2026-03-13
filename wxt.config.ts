@@ -16,8 +16,8 @@ export default defineConfig({
     name: "GitHub PR Tab Group Manager",
     version: "1.0",
     description: "Track GitHub pull requests and auto-group tabs by review status.",
-    permissions: ["activeTab", "tabs", "tabGroups", "storage", "webNavigation"],
-    host_permissions: ["https://github.com/*"],
+    permissions: ["activeTab", "tabs", "tabGroups", "storage", "webNavigation", "scripting"],
+    host_permissions: ["http://*/*", "https://*/*"],
     icons: {
       16: "icon16.png",
       48: "icon48.png",
@@ -37,6 +37,13 @@ export default defineConfig({
           mac: "Command+Shift+U",
         },
         description: "Untrack current GitHub pull request",
+      },
+      "copy-current-url": {
+        suggested_key: {
+          default: "Ctrl+Shift+C",
+          mac: "Command+Shift+C",
+        },
+        description: "Copy current page URL",
       },
     },
   },

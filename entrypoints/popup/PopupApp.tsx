@@ -45,6 +45,7 @@ interface UiStatus {
 
 interface ModuleSettings {
   githubPrManager: { enabled: boolean }
+  urlCopyShortcut: { enabled: boolean }
 }
 
 interface ExtensionApiLike {
@@ -119,11 +120,17 @@ async function activatePrTab(prUrl: string): Promise<{ ok: boolean }> {
 
 async function fetchModuleSettings(): Promise<ModuleSettings> {
   if (!extensionApi?.runtime) {
-    return { githubPrManager: { enabled: true } };
+    return {
+      githubPrManager: { enabled: true },
+      urlCopyShortcut: { enabled: true },
+    };
   }
 
   const response = await extensionApi.runtime.sendMessage({ type: "GET_MODULE_SETTINGS" }) as Partial<{ settings: ModuleSettings }>;
-  return response.settings ?? { githubPrManager: { enabled: true } };
+  return response.settings ?? {
+    githubPrManager: { enabled: true },
+    urlCopyShortcut: { enabled: true },
+  };
 }
 
 async function saveModuleSettings(settings: ModuleSettings): Promise<void> {
@@ -181,13 +188,18 @@ function parsePrUrl(prUrl: string): { repoKey: string, prNumber: string | null }
 function HomeScreen({
   moduleSettings,
   onToggleGithubPr,
+  onToggleUrlCopyShortcut,
   onNavigateToGithubPr,
+  onNavigateToUrlCopyShortcut,
 }: {
   moduleSettings: ModuleSettings
   onToggleGithubPr: (enabled: boolean) => void
+  onToggleUrlCopyShortcut: (enabled: boolean) => void
   onNavigateToGithubPr: () => void
+  onNavigateToUrlCopyShortcut: () => void
 }) {
-  const enabled = moduleSettings.githubPrManager.enabled;
+  const githubPrEnabled = moduleSettings.githubPrManager.enabled;
+  const urlCopyEnabled = moduleSettings.urlCopyShortcut.enabled;
 
   return (
     <main style={{ padding: 16, fontFamily: "'Helvetica Neue', Arial, sans-serif", color: "#111827" }}>
@@ -221,25 +233,140 @@ function HomeScreen({
             type="button"
             onClick={(e) => {
               e.stopPropagation();
-              onToggleGithubPr(!enabled);
+              onToggleGithubPr(!githubPrEnabled);
             }}
             style={{
               padding: "4px 10px",
               borderRadius: 6,
               border: "1px solid #d1d5db",
-              background: enabled ? "#111827" : "#f3f4f6",
-              color: enabled ? "#ffffff" : "#6b7280",
+              background: githubPrEnabled ? "#111827" : "#f3f4f6",
+              color: githubPrEnabled ? "#ffffff" : "#6b7280",
               cursor: "pointer",
               fontSize: 12,
               fontWeight: 600,
               whiteSpace: "nowrap",
             }}
           >
-            {enabled ? "有効" : "無効"}
+            {githubPrEnabled ? "有効" : "無効"}
           </button>
           <span style={{ fontSize: 16, color: "#9ca3af" }}>›</span>
         </div>
       </div>
+
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={onNavigateToUrlCopyShortcut}
+        onKeyDown={(e) => {
+          if (e.key === "Enter")
+            onNavigateToUrlCopyShortcut();
+        }}
+        style={{
+          ...baseCardStyle,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          cursor: "pointer",
+          gap: 12,
+          marginTop: 12,
+        }}
+      >
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <p style={{ margin: 0, fontSize: 14, fontWeight: 600 }}>URL Copy Shortcut</p>
+          <p style={{ margin: "3px 0 0", fontSize: 12, color: "#6b7280" }}>
+            Webページ上で `Command/Ctrl + Shift + C` を押すと、現在のURLをコピーしてトースト表示します。
+          </p>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleUrlCopyShortcut(!urlCopyEnabled);
+            }}
+            style={{
+              padding: "4px 10px",
+              borderRadius: 6,
+              border: "1px solid #d1d5db",
+              background: urlCopyEnabled ? "#111827" : "#f3f4f6",
+              color: urlCopyEnabled ? "#ffffff" : "#6b7280",
+              cursor: "pointer",
+              fontSize: 12,
+              fontWeight: 600,
+              whiteSpace: "nowrap",
+            }}
+          >
+            {urlCopyEnabled ? "有効" : "無効"}
+          </button>
+          <span style={{ fontSize: 16, color: "#9ca3af" }}>›</span>
+        </div>
+      </div>
+    </main>
+  );
+}
+
+function UrlCopyShortcutScreen({
+  enabled,
+  onBack,
+  onToggle,
+}: {
+  enabled: boolean
+  onBack: () => void
+  onToggle: (enabled: boolean) => void
+}) {
+  return (
+    <main style={{ padding: 16, fontFamily: "'Helvetica Neue', Arial, sans-serif", color: "#111827" }}>
+      <div style={{ display: "flex", alignItems: "center", marginBottom: 12, gap: 8 }}>
+        <button
+          type="button"
+          onClick={onBack}
+          style={{
+            background: "none",
+            border: "none",
+            padding: 0,
+            cursor: "pointer",
+            fontSize: 14,
+            color: "#374151",
+            display: "flex",
+            alignItems: "center",
+          }}
+        >
+          ←
+        </button>
+        <h1 style={{ fontSize: 18, margin: 0 }}>URL Copy Shortcut</h1>
+      </div>
+
+      <section style={{ ...baseCardStyle }}>
+        <p style={{ margin: "0 0 8px", fontSize: 13, fontWeight: 600 }}>ショートカット</p>
+        <p style={{ margin: 0, fontSize: 12, color: "#374151" }}>mac: Command + Shift + C</p>
+        <p style={{ margin: "4px 0 0", fontSize: 12, color: "#374151" }}>Windows/Linux: Ctrl + Shift + C</p>
+      </section>
+
+      <section style={{ ...baseCardStyle, marginTop: 12, background: "#f9fafb" }}>
+        <p style={{ margin: 0, fontSize: 12, color: "#374151", lineHeight: 1.6 }}>
+          Webページ上でショートカットを押すと、現在のページURLをクリップボードへコピーします。
+          コピー後は右上に完了トーストを表示します。
+        </p>
+      </section>
+
+      <button
+        type="button"
+        onClick={() => onToggle(!enabled)}
+        style={{
+          width: "100%",
+          border: "none",
+          borderRadius: 10,
+          padding: "10px 12px",
+          marginTop: 12,
+          background: enabled ? "#111827" : "#f3f4f6",
+          color: enabled ? "#ffffff" : "#111827",
+          cursor: "pointer",
+          fontWeight: 600,
+          fontSize: 13,
+        }}
+      >
+        {enabled ? "モジュールを無効化" : "モジュールを有効化"}
+      </button>
     </main>
   );
 }
@@ -588,12 +715,13 @@ function GithubPrScreen({ onBack }: { onBack: () => void }) {
   );
 }
 
-type PopupView = "home" | "githubPr";
+type PopupView = "home" | "githubPr" | "urlCopyShortcut";
 
 export default function PopupApp() {
   const [view, setView] = useState<PopupView>("home");
   const [moduleSettings, setModuleSettings] = useState<ModuleSettings>({
     githubPrManager: { enabled: true },
+    urlCopyShortcut: { enabled: true },
   });
 
   useEffect(() => {
@@ -602,11 +730,35 @@ export default function PopupApp() {
       .catch((error: unknown) => console.error(error));
   }, []);
 
-  const handleToggleGithubPr = useCallback(async (enabled: boolean) => {
-    const next: ModuleSettings = { githubPrManager: { enabled } };
-    setModuleSettings(next);
-    await saveModuleSettings(next);
+  const persistModuleSettings = useCallback(async (nextSettings: ModuleSettings) => {
+    setModuleSettings(nextSettings);
+    await saveModuleSettings(nextSettings);
   }, []);
+
+  const handleToggleGithubPr = useCallback(async (enabled: boolean) => {
+    await persistModuleSettings({
+      ...moduleSettings,
+      githubPrManager: { enabled },
+    });
+  }, [moduleSettings, persistModuleSettings]);
+
+  const handleToggleUrlCopyShortcut = useCallback(async (enabled: boolean) => {
+    await persistModuleSettings({
+      ...moduleSettings,
+      urlCopyShortcut: { enabled },
+    });
+  }, [moduleSettings, persistModuleSettings]);
+
+  if (view === "urlCopyShortcut") {
+    return (
+      <UrlCopyShortcutScreen
+        enabled={moduleSettings.urlCopyShortcut.enabled}
+        onBack={() => setView("home")}
+        onToggle={enabled =>
+          handleToggleUrlCopyShortcut(enabled).catch((error: unknown) => console.error(error))}
+      />
+    );
+  }
 
   if (view === "githubPr") {
     return <GithubPrScreen onBack={() => setView("home")} />;
@@ -617,7 +769,10 @@ export default function PopupApp() {
       moduleSettings={moduleSettings}
       onToggleGithubPr={enabled =>
         handleToggleGithubPr(enabled).catch((error: unknown) => console.error(error))}
+      onToggleUrlCopyShortcut={enabled =>
+        handleToggleUrlCopyShortcut(enabled).catch((error: unknown) => console.error(error))}
       onNavigateToGithubPr={() => setView("githubPr")}
+      onNavigateToUrlCopyShortcut={() => setView("urlCopyShortcut")}
     />
   );
 }
