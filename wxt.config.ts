@@ -1,7 +1,17 @@
 import { defineConfig } from "wxt";
 
 export default defineConfig({
+  root: import.meta.dirname,
+  srcDir: ".",
+  entrypointsDir: "entrypoints",
   modules: ["@wxt-dev/module-react"],
+  dev: {
+    server: {
+      host: "127.0.0.1",
+      port: 3000,
+      origin: "http://127.0.0.1:3000",
+    },
+  },
   manifest: {
     name: "GitHub PR Tab Group Manager",
     version: "1.0",
