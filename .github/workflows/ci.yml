@@ -1,0 +1,113 @@
+name: Main CI
+
+on:
+  push:
+    branches:
+      - "main"
+  pull_request:
+    branches:
+      - "main"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  all-status-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs:
+      - yaml-lint
+      - markdown-lint
+      - action-lint
+      - renovate-deps-comment
+      - ts-check
+      - build
+      - test
+    if: ${{ always() }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      - name: Check all-status-check
+        run: |
+          diff \
+            <(yq ".jobs | del(.all-status-check) | keys.[]" .github/workflows/ci.yml) \
+            <(yq ".jobs.all-status-check.needs.[]" .github/workflows/ci.yml)
+      - name: Fail if any needed job failed
+        env:
+          JOBS: ${{ toJson(needs) }}
+        run: |
+          for result in $(jq -r '.[].result' <<<"$JOBS"); do
+            if [[ ! "$result" =~ ^(success|skipped)$ ]]; then
+              exit 1
+            fi
+          done
+
+  yaml-lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      - uses: reviewdog/action-yamllint@f01d8a48fd8d89f89895499fca2cff09f9e9e8c0 # v1.21.0
+        with:
+          level: warning
+          yamllint_flags: "-c .yamllint ."
+
+  markdown-lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      - uses: reviewdog/action-markdownlint@3667398db9118d7e78f7a63d10e26ce454ba5f58 # v0.26.2
+        with:
+          level: warning
+
+  action-lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      - uses: reviewdog/action-actionlint@0d952c597ef8459f634d7145b0b044a9699e5e43 # v1.71.0
+        with:
+          level: warning
+          fail_level: any
+
+  renovate-deps-comment:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: shiron-dev/actions/renovate-deps-comment@d898596addf114b0b4a4cd9a984775410e248e10 # v1.6.2
+
+  ts-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      - uses: shiron-dev/actions/setup-node@d898596addf114b0b4a4cd9a984775410e248e10 # v1.6.2
+      - name: Install dependencies
+        run: pnpm install
+      - name: Run typecheck
+        run: pnpm typecheck
+        # - name: Run lint
+        #   run: pnpm lint
+
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      - uses: shiron-dev/actions/setup-node@d898596addf114b0b4a4cd9a984775410e248e10 # v1.6.2
+      - name: Install dependencies
+        run: pnpm install
+      - name: Run build
+        run: pnpm build
+
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      - uses: shiron-dev/actions/setup-node@d898596addf114b0b4a4cd9a984775410e248e10 # v1.6.2
+      - name: Install dependencies
+        run: pnpm install
+      - name: Run test
+        run: pnpm test
