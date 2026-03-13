@@ -27,6 +27,11 @@ interface ExtensionApiLike {
   }
 }
 
+interface CopyToastElements {
+  container: HTMLDivElement
+  message: HTMLSpanElement
+}
+
 const SPACING_PATTERN = /\s+/g;
 const REVIEW_REQUEST_PATTERNS = [
   /requested review from/,
@@ -60,8 +65,28 @@ const REVIEW_COMMENTS_PATTERN = /left review comments?/;
 const AWAITING_REVIEW_PATTERN = /awaiting requested review from/;
 const BOT_SUFFIX_PATTERN = /\[bot\]$/;
 const PR_NUMBER_SUFFIX_PATTERN = /\s*#\d+\s*$/u;
+const COPY_TOAST_ID = "pr-url-copy-toast";
+const COPY_TOAST_DURATION_MS = 1800;
+const COPY_SHORTCUT_KEY = "c";
+const COPY_TOAST_STYLE = {
+  position: "fixed",
+  right: "24px",
+  bottom: "24px",
+  zIndex: "2147483647",
+  padding: "10px 14px",
+  borderRadius: "8px",
+  background: "rgba(17, 24, 39, 0.95)",
+  color: "#ffffff",
+  fontSize: "13px",
+  fontWeight: "600",
+  boxShadow: "0 8px 28px rgba(15, 23, 42, 0.35)",
+  opacity: "0",
+  transform: "translateY(8px)",
+  transition: "opacity 140ms ease, transform 140ms ease",
+} as const;
 
 const extensionApi = (globalThis as { chrome?: ExtensionApiLike }).chrome;
+let copyToastTimeoutId: number | undefined;
 
 function normalizeText(raw: string): string {
   return raw.replace(SPACING_PATTERN, " ").trim().toLowerCase();
@@ -280,10 +305,75 @@ function getPrTitle(): string | null {
   return docTitle || null;
 }
 
+function getOrCreateCopyToast(): CopyToastElements {
+  const existing = document.getElementById(COPY_TOAST_ID) as HTMLDivElement | null;
+  if (existing) {
+    const message = existing.querySelector("span");
+    if (message instanceof HTMLSpanElement) {
+      return { container: existing, message };
+    }
+  }
+
+  const container = document.createElement("div");
+  container.id = COPY_TOAST_ID;
+  Object.assign(container.style, COPY_TOAST_STYLE);
+
+  const message = document.createElement("span");
+  container.appendChild(message);
+  document.body.appendChild(container);
+
+  return { container, message };
+}
+
+function showCopyToast(text: string): void {
+  const { container, message } = getOrCreateCopyToast();
+  message.textContent = text;
+
+  if (copyToastTimeoutId) {
+    window.clearTimeout(copyToastTimeoutId);
+  }
+
+  container.style.opacity = "1";
+  container.style.transform = "translateY(0)";
+
+  copyToastTimeoutId = window.setTimeout(() => {
+    container.style.opacity = "0";
+    container.style.transform = "translateY(8px)";
+  }, COPY_TOAST_DURATION_MS);
+}
+
+function shouldCopyCurrentUrl(event: KeyboardEvent): boolean {
+  return event.metaKey
+    && event.shiftKey
+    && !event.ctrlKey
+    && !event.altKey
+    && event.key.toLowerCase() === COPY_SHORTCUT_KEY;
+}
+
+async function copyCurrentUrlToClipboard(): Promise<void> {
+  try {
+    await navigator.clipboard.writeText(window.location.href);
+    showCopyToast("URLをコピーしました");
+  }
+  catch (error) {
+    console.warn("Failed to copy URL:", error);
+    showCopyToast("URLのコピーに失敗しました");
+  }
+}
+
 export default defineContentScript({
   matches: ["https://github.com/*"],
   runAt: "document_end",
   main() {
+    document.addEventListener("keydown", (event) => {
+      if (!shouldCopyCurrentUrl(event)) {
+        return;
+      }
+
+      event.preventDefault();
+      void copyCurrentUrlToClipboard();
+    });
+
     extensionApi?.runtime?.onMessage?.addListener((message: ScanPrTimelineMessage) => {
       if (message.type !== "SCAN_PR_TIMELINE") {
         return;
