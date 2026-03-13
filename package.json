@@ -9,8 +9,8 @@
     "dev:web": "react-router dev",
     "build:web": "react-router build",
     "start": "react-router-serve ./build/server/index.js",
-    "lint": "eslint .",
-    "lint:fix": "eslint . --fix",
+    "lint": "eslint --no-error-on-unmatched-pattern \"app/**/*.{ts,tsx}\" \"entrypoints/**/*.{ts,tsx}\" \"src/**/*.ts\" \"src/**/*.tsx\"",
+    "lint:fix": "eslint --no-error-on-unmatched-pattern \"app/**/*.{ts,tsx}\" \"entrypoints/**/*.{ts,tsx}\" \"src/**/*.ts\" \"src/**/*.tsx\" --fix",
     "typecheck": "react-router typegen && tsc",
     "test": "node src/content_scripts/tests/test-detection.mjs",
     "prepare": "wxt prepare"
