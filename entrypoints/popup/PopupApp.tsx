@@ -38,6 +38,32 @@ interface ReloadTrackedPrsResponse {
   reloadedTabCount: number
 }
 
+interface PersistentHomeTabItem {
+  id: string
+  homeUrl: string
+  windowId: number
+  index: number
+  tabId: number
+  groupId?: number
+  createdAt: number
+  updatedAt: number
+}
+
+interface HomeTabStateResponse {
+  items: PersistentHomeTabItem[]
+}
+
+interface RegisterCurrentHomeTabResponse {
+  ok: boolean
+  reason?: "module_disabled" | "no_active_tab" | "unsupported_url" | "already_registered"
+  item?: PersistentHomeTabItem
+}
+
+interface UnregisterHomeTabResponse {
+  ok: boolean
+  reason?: "not_found"
+}
+
 interface UiStatus {
   tone: "neutral" | "success" | "warn"
   message: string
@@ -46,6 +72,7 @@ interface UiStatus {
 interface ModuleSettings {
   githubPrManager: { enabled: boolean }
   urlCopyShortcut: { enabled: boolean }
+  persistentHomeTab: { enabled: boolean }
 }
 
 interface ExtensionApiLike {
@@ -118,11 +145,54 @@ async function activatePrTab(prUrl: string): Promise<{ ok: boolean }> {
   return extensionApi.runtime.sendMessage({ type: "ACTIVATE_PR_TAB", prUrl }) as Promise<{ ok: boolean }>;
 }
 
+async function fetchHomeTabState(): Promise<HomeTabStateResponse> {
+  if (!extensionApi?.runtime) {
+    return { items: [] };
+  }
+
+  const response = await extensionApi.runtime.sendMessage({ type: "GET_HOME_TAB_STATE" }) as Partial<HomeTabStateResponse>;
+  if (!Array.isArray(response.items)) {
+    return { items: [] };
+  }
+
+  const items = response.items
+    .filter((item): item is PersistentHomeTabItem => (
+      typeof item.id === "string"
+      && typeof item.homeUrl === "string"
+      && typeof item.windowId === "number"
+      && typeof item.index === "number"
+      && typeof item.tabId === "number"
+      && typeof item.createdAt === "number"
+      && typeof item.updatedAt === "number"
+      && (item.groupId === undefined || typeof item.groupId === "number")
+    ))
+    .sort((a, b) => b.updatedAt - a.updatedAt);
+
+  return { items };
+}
+
+async function registerCurrentHomeTab(): Promise<RegisterCurrentHomeTabResponse> {
+  if (!extensionApi?.runtime) {
+    return { ok: false, reason: "no_active_tab" };
+  }
+
+  return extensionApi.runtime.sendMessage({ type: "REGISTER_CURRENT_HOME_TAB" }) as Promise<RegisterCurrentHomeTabResponse>;
+}
+
+async function unregisterHomeTab(id: string): Promise<UnregisterHomeTabResponse> {
+  if (!extensionApi?.runtime) {
+    return { ok: false, reason: "not_found" };
+  }
+
+  return extensionApi.runtime.sendMessage({ type: "UNREGISTER_HOME_TAB", id }) as Promise<UnregisterHomeTabResponse>;
+}
+
 async function fetchModuleSettings(): Promise<ModuleSettings> {
   if (!extensionApi?.runtime) {
     return {
       githubPrManager: { enabled: true },
       urlCopyShortcut: { enabled: true },
+      persistentHomeTab: { enabled: true },
     };
   }
 
@@ -130,6 +200,7 @@ async function fetchModuleSettings(): Promise<ModuleSettings> {
   return response.settings ?? {
     githubPrManager: { enabled: true },
     urlCopyShortcut: { enabled: true },
+    persistentHomeTab: { enabled: true },
   };
 }
 
@@ -189,17 +260,22 @@ function HomeScreen({
   moduleSettings,
   onToggleGithubPr,
   onToggleUrlCopyShortcut,
+  onTogglePersistentHomeTab,
   onNavigateToGithubPr,
   onNavigateToUrlCopyShortcut,
+  onNavigateToPersistentHomeTab,
 }: {
   moduleSettings: ModuleSettings
   onToggleGithubPr: (enabled: boolean) => void
   onToggleUrlCopyShortcut: (enabled: boolean) => void
+  onTogglePersistentHomeTab: (enabled: boolean) => void
   onNavigateToGithubPr: () => void
   onNavigateToUrlCopyShortcut: () => void
+  onNavigateToPersistentHomeTab: () => void
 }) {
   const githubPrEnabled = moduleSettings.githubPrManager.enabled;
   const urlCopyEnabled = moduleSettings.urlCopyShortcut.enabled;
+  const persistentHomeTabEnabled = moduleSettings.persistentHomeTab.enabled;
 
   return (
     <main style={{ padding: 16, fontFamily: "'Helvetica Neue', Arial, sans-serif", color: "#111827" }}>
@@ -250,6 +326,55 @@ function HomeScreen({
             {githubPrEnabled ? "有効" : "無効"}
           </button>
           <span style={{ fontSize: 16, color: "#9ca3af" }}>›</span>
+        </div>
+      </div>
+
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={onNavigateToPersistentHomeTab}
+        onKeyDown={(e) => {
+          if (e.key === "Enter")
+            onNavigateToPersistentHomeTab();
+        }}
+        style={{
+          ...baseCardStyle,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          cursor: "pointer",
+          gap: 12,
+          marginTop: 12,
+        }}
+      >
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <p style={{ margin: 0, fontSize: 14, fontWeight: 600 }}>Persistent Home Tab</p>
+          <p style={{ margin: "3px 0 0", fontSize: 12, color: "#6b7280" }}>
+            閉じても同じ場所に復活するホームタブを登録・管理します。
+          </p>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onTogglePersistentHomeTab(!persistentHomeTabEnabled);
+            }}
+            style={{
+              padding: "4px 10px",
+              borderRadius: 6,
+              border: "1px solid #d1d5db",
+              background: persistentHomeTabEnabled ? "#111827" : "#f3f4f6",
+              color: persistentHomeTabEnabled ? "#ffffff" : "#6b7280",
+              cursor: "pointer",
+              fontSize: 12,
+              fontWeight: 600,
+              whiteSpace: "nowrap",
+            }}
+          >
+            {persistentHomeTabEnabled ? "有効" : "無効"}
+          </button>
+          <span style={{ fontSize: 16, color: "#9ca3af", flexShrink: 0 }}>›</span>
         </div>
       </div>
 
@@ -367,6 +492,227 @@ function UrlCopyShortcutScreen({
       >
         {enabled ? "モジュールを無効化" : "モジュールを有効化"}
       </button>
+    </main>
+  );
+}
+
+function PersistentHomeTabScreen({
+  enabled,
+  onBack,
+  onToggle,
+}: {
+  enabled: boolean
+  onBack: () => void
+  onToggle: (enabled: boolean) => void
+}) {
+  const [items, setItems] = useState<PersistentHomeTabItem[]>([]);
+  const [status, setStatus] = useState<UiStatus>({ tone: "neutral", message: "" });
+
+  const reloadItems = useCallback(async () => {
+    const state = await fetchHomeTabState();
+    setItems(state.items);
+  }, []);
+
+  useEffect(() => {
+    reloadItems().catch((error: unknown) => console.error(error));
+  }, [reloadItems]);
+
+  const handleRegisterCurrentTab = useCallback(async () => {
+    const result = await registerCurrentHomeTab();
+
+    if (!result.ok && result.reason === "no_active_tab") {
+      setStatus({ tone: "warn", message: "現在タブを取得できませんでした。" });
+      return;
+    }
+
+    if (!result.ok && result.reason === "module_disabled") {
+      setStatus({ tone: "warn", message: "Persistent Home Tabは無効化されています。" });
+      return;
+    }
+
+    if (!result.ok && result.reason === "unsupported_url") {
+      setStatus({ tone: "warn", message: "このURLはホームタブとして登録できません。" });
+      return;
+    }
+
+    if (!result.ok && result.reason === "already_registered") {
+      setStatus({ tone: "neutral", message: "このタブはすでにホームタブ登録済みです。" });
+      await reloadItems();
+      return;
+    }
+
+    setStatus({ tone: "success", message: "現在タブをホームタブに登録しました。" });
+    await reloadItems();
+  }, [reloadItems]);
+
+  const handleUnregister = useCallback(async (id: string) => {
+    const result = await unregisterHomeTab(id);
+
+    if (!result.ok) {
+      setStatus({ tone: "warn", message: "ホームタブ解除に失敗しました。" });
+      await reloadItems();
+      return;
+    }
+
+    setStatus({ tone: "success", message: "ホームタブを解除しました。" });
+    await reloadItems();
+  }, [reloadItems]);
+
+  const statusColor = useMemo(() => {
+    if (status.tone === "success") {
+      return "#166534";
+    }
+
+    if (status.tone === "warn") {
+      return "#b45309";
+    }
+
+    return "#1f2937";
+  }, [status.tone]);
+
+  return (
+    <main style={{ padding: 16, fontFamily: "'Helvetica Neue', Arial, sans-serif", color: "#111827" }}>
+      <div style={{ display: "flex", alignItems: "center", marginBottom: 12, gap: 8 }}>
+        <button
+          type="button"
+          onClick={onBack}
+          style={{
+            background: "none",
+            border: "none",
+            padding: 0,
+            cursor: "pointer",
+            fontSize: 14,
+            color: "#374151",
+            display: "flex",
+            alignItems: "center",
+          }}
+        >
+          ←
+        </button>
+        <h1 style={{ fontSize: 18, margin: 0 }}>Persistent Home Tab</h1>
+      </div>
+
+      <section style={{ ...baseCardStyle }}>
+        <p style={{ margin: "0 0 8px", fontSize: 13, color: "#374151", lineHeight: 1.5 }}>
+          登録したタブを閉じると、同じURLを同じ場所に再作成します。
+          ウィンドウが無い場合は最後の通常ウィンドウに復元します。
+        </p>
+        <button
+          type="button"
+          onClick={() => onToggle(!enabled)}
+          style={{
+            width: "100%",
+            border: "1px solid #d1d5db",
+            borderRadius: 10,
+            padding: "10px 12px",
+            marginBottom: 8,
+            background: enabled ? "#111827" : "#f3f4f6",
+            color: enabled ? "#ffffff" : "#111827",
+            cursor: "pointer",
+            fontWeight: 600,
+            fontSize: 13,
+          }}
+        >
+          {enabled ? "モジュールを無効化" : "モジュールを有効化"}
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            handleRegisterCurrentTab().catch((error: unknown) => console.error(error));
+          }}
+          disabled={!enabled}
+          style={{
+            width: "100%",
+            border: "none",
+            borderRadius: 10,
+            padding: "10px 12px",
+            background: enabled ? "#111827" : "#9ca3af",
+            color: "#ffffff",
+            cursor: enabled ? "pointer" : "default",
+            fontWeight: 600,
+            fontSize: 13,
+          }}
+        >
+          現在タブをホームタブに登録
+        </button>
+      </section>
+
+      {status.message && (
+        <p style={{ marginTop: 12, fontSize: 12, color: statusColor }}>
+          {status.message}
+        </p>
+      )}
+
+      <section style={{ ...baseCardStyle, marginTop: 12 }}>
+        <h2 style={{ margin: "0 0 8px", fontSize: 14 }}>
+          登録済みホームタブ
+          {" "}
+          (
+          {items.length}
+          )
+        </h2>
+
+        {items.length === 0
+          ? (
+              <p style={{ margin: 0, fontSize: 12, color: "#6b7280" }}>登録済みホームタブはありません。</p>
+            )
+          : (
+              <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "grid", gap: 8 }}>
+                {items.map(item => (
+                  <li key={item.id} style={{ border: "1px solid #e5e7eb", borderRadius: 8, padding: 8 }}>
+                    <a
+                      href={item.homeUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      style={{ display: "block", fontSize: 12, color: "#1d4ed8", wordBreak: "break-all", fontWeight: 600 }}
+                    >
+                      {item.homeUrl}
+                    </a>
+                    <p style={{ margin: "6px 0 0", fontSize: 11, color: "#374151" }}>
+                      window:
+                      {" "}
+                      {item.windowId}
+                      {" / "}
+                      index:
+                      {" "}
+                      {item.index}
+                    </p>
+                    <p style={{ margin: "2px 0 0", fontSize: 11, color: "#6b7280" }}>
+                      group:
+                      {" "}
+                      {item.groupId === undefined ? "なし" : item.groupId}
+                    </p>
+                    <p style={{ margin: "2px 0 0", fontSize: 11, color: "#6b7280" }}>
+                      更新:
+                      {" "}
+                      {new Date(item.updatedAt).toLocaleString("ja-JP")}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        handleUnregister(item.id).catch((error: unknown) => console.error(error));
+                      }}
+                      disabled={!enabled}
+                      style={{
+                        width: "100%",
+                        border: "1px solid #d1d5db",
+                        borderRadius: 6,
+                        padding: "6px 8px",
+                        marginTop: 8,
+                        background: enabled ? "#ffffff" : "#f3f4f6",
+                        color: enabled ? "#111827" : "#9ca3af",
+                        cursor: enabled ? "pointer" : "default",
+                        fontWeight: 600,
+                        fontSize: 12,
+                      }}
+                    >
+                      解除
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+      </section>
     </main>
   );
 }
@@ -715,13 +1061,14 @@ function GithubPrScreen({ onBack }: { onBack: () => void }) {
   );
 }
 
-type PopupView = "home" | "githubPr" | "urlCopyShortcut";
+type PopupView = "home" | "githubPr" | "urlCopyShortcut" | "persistentHomeTab";
 
 export default function PopupApp() {
   const [view, setView] = useState<PopupView>("home");
   const [moduleSettings, setModuleSettings] = useState<ModuleSettings>({
     githubPrManager: { enabled: true },
     urlCopyShortcut: { enabled: true },
+    persistentHomeTab: { enabled: true },
   });
 
   useEffect(() => {
@@ -749,6 +1096,13 @@ export default function PopupApp() {
     });
   }, [moduleSettings, persistModuleSettings]);
 
+  const handleTogglePersistentHomeTab = useCallback(async (enabled: boolean) => {
+    await persistModuleSettings({
+      ...moduleSettings,
+      persistentHomeTab: { enabled },
+    });
+  }, [moduleSettings, persistModuleSettings]);
+
   if (view === "urlCopyShortcut") {
     return (
       <UrlCopyShortcutScreen
@@ -764,6 +1118,17 @@ export default function PopupApp() {
     return <GithubPrScreen onBack={() => setView("home")} />;
   }
 
+  if (view === "persistentHomeTab") {
+    return (
+      <PersistentHomeTabScreen
+        enabled={moduleSettings.persistentHomeTab.enabled}
+        onBack={() => setView("home")}
+        onToggle={enabled =>
+          handleTogglePersistentHomeTab(enabled).catch((error: unknown) => console.error(error))}
+      />
+    );
+  }
+
   return (
     <HomeScreen
       moduleSettings={moduleSettings}
@@ -771,8 +1136,11 @@ export default function PopupApp() {
         handleToggleGithubPr(enabled).catch((error: unknown) => console.error(error))}
       onToggleUrlCopyShortcut={enabled =>
         handleToggleUrlCopyShortcut(enabled).catch((error: unknown) => console.error(error))}
+      onTogglePersistentHomeTab={enabled =>
+        handleTogglePersistentHomeTab(enabled).catch((error: unknown) => console.error(error))}
       onNavigateToGithubPr={() => setView("githubPr")}
       onNavigateToUrlCopyShortcut={() => setView("urlCopyShortcut")}
+      onNavigateToPersistentHomeTab={() => setView("persistentHomeTab")}
     />
   );
 }
