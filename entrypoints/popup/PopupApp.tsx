@@ -197,7 +197,10 @@ function HomeScreen({
         role="button"
         tabIndex={0}
         onClick={onNavigateToGithubPr}
-        onKeyDown={(e) => { if (e.key === "Enter") onNavigateToGithubPr(); }}
+        onKeyDown={(e) => {
+          if (e.key === "Enter")
+            onNavigateToGithubPr();
+        }}
         style={{
           ...baseCardStyle,
           display: "flex",
