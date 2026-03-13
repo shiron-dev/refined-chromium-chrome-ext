@@ -730,33 +730,24 @@ export default function PopupApp() {
       .catch((error: unknown) => console.error(error));
   }, []);
 
-  const updateModuleSettings = useCallback(async (updater: (current: ModuleSettings) => ModuleSettings) => {
-    let nextSettings: ModuleSettings | null = null;
-
-    setModuleSettings((current) => {
-      const computed = updater(current);
-      nextSettings = computed;
-      return computed;
-    });
-
-    if (nextSettings) {
-      await saveModuleSettings(nextSettings);
-    }
+  const persistModuleSettings = useCallback(async (nextSettings: ModuleSettings) => {
+    setModuleSettings(nextSettings);
+    await saveModuleSettings(nextSettings);
   }, []);
 
   const handleToggleGithubPr = useCallback(async (enabled: boolean) => {
-    await updateModuleSettings(current => ({
-      ...current,
+    await persistModuleSettings({
+      ...moduleSettings,
       githubPrManager: { enabled },
-    }));
-  }, [updateModuleSettings]);
+    });
+  }, [moduleSettings, persistModuleSettings]);
 
   const handleToggleUrlCopyShortcut = useCallback(async (enabled: boolean) => {
-    await updateModuleSettings(current => ({
-      ...current,
+    await persistModuleSettings({
+      ...moduleSettings,
       urlCopyShortcut: { enabled },
-    }));
-  }, [updateModuleSettings]);
+    });
+  }, [moduleSettings, persistModuleSettings]);
 
   if (view === "urlCopyShortcut") {
     return (
