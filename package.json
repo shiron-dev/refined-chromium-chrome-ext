@@ -3,17 +3,17 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "build": "BUILD_ENV=development pnpm run build:react && pnpm run build:webpack",
-    "build:prod": "pnpm run build:react && pnpm run build:webpack",
-    "build:react": "react-router build",
-    "build:webpack": "webpack build --mode production --config ./webpack.config.js",
-    "dev": "react-router dev",
+    "build": "wxt build",
+    "build:prod": "wxt build",
+    "dev": "wxt dev",
+    "dev:web": "react-router dev",
+    "build:web": "react-router build",
     "start": "react-router-serve ./build/server/index.js",
-    "lint": "pnpm run lint:manifest && eslint .",
-    "lint:manifest": "ajv validate -s schemas/chrome-manifest.schema.json -d public/manifest.json --strict=false --validate-formats=false",
+    "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "typecheck": "react-router typegen && tsc",
-    "test": "node src/content_scripts/tests/test-detection.mjs"
+    "test": "node src/content_scripts/tests/test-detection.mjs",
+    "prepare": "wxt prepare"
   },
   "dependencies": {
     "@react-router/node": "^7.13.1",
@@ -26,21 +26,24 @@
   "devDependencies": {
     "@react-router/dev": "^7.13.1",
     "@shiron-dev/eslint-config": "^2.1.5",
+    "@types/chrome": "^0.0.316",
     "@types/node": "^20.19.37",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
-    "ajv-cli": "^5.0.0",
-    "copy-webpack-plugin": "^13.0.1",
+    "@wxt-dev/module-react": "^1.1.0",
     "eslint": "^10.0.3",
     "eslint-plugin-format": "^1.5.0",
     "jsdom": "^28.1.0",
     "react-router-devtools": "^1.1.10",
-    "ts-loader": "^9.5.4",
     "typescript": "^5.9.3",
-    "vite": "^5.4.21",
+    "vite": "5.4.14",
     "vite-tsconfig-paths": "^5.1.4",
     "vitest": "^4.1.0",
-    "webpack": "^5.105.4",
-    "webpack-cli": "^6.0.1"
+    "wxt": "^0.20.5"
+  },
+  "pnpm": {
+    "overrides": {
+      "vite": "5.4.14"
+    }
   }
 }
