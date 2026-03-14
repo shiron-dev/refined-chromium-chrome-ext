@@ -30,7 +30,7 @@
     "@types/node": "^20.19.37",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
-    "@wxt-dev/module-react": "^1.1.0",
+    "@wxt-dev/module-react": "^1.2.1",
     "eslint": "^10.0.3",
     "eslint-plugin-format": "^1.5.0",
     "jsdom": "^28.1.0",
@@ -39,7 +39,7 @@
     "vite": "5.4.21",
     "vite-tsconfig-paths": "^5.1.4",
     "vitest": "^4.1.0",
-    "wxt": "^0.20.5"
+    "wxt": "^0.20.18"
   },
   "pnpm": {
     "overrides": {
