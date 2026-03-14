@@ -1,5 +1,10 @@
-type PrState = "working" | "reviewing" | "merge_waiting" | "merged";
-type PrEvent = "review_requested" | "approved" | "commented" | "merged";
+import {
+  type PrState,
+  type BackgroundPrEvent as PrEvent,
+  normalizePrUrl,
+  isConversationView,
+  applyPrEvents,
+} from "../src/utils/background-utils";
 type ReviewerStatus = "has_reviewers" | "no_reviewers" | "unknown";
 type ApprovalStatus = "approved" | "not_approved" | "unknown";
 type CommentStatus = "has_comments" | "no_comments" | "unknown";
@@ -220,7 +225,6 @@ interface ExtensionApiLike {
 const STORAGE_KEY = "trackedPrs";
 const MODULE_SETTINGS_KEY = "moduleSettings";
 const PERSISTENT_HOME_TABS_KEY = "persistentHomeTabs";
-const GITHUB_PR_URL_PATTERN = /^\/([^/]+)\/([^/]+)\/pull\/(\d+)(?:\/.*)?$/;
 
 const GROUP_TITLE_BY_STATE: Record<PrState, string> = {
   working: "PR作業/確認中",
@@ -247,60 +251,6 @@ const REGISTER_CURRENT_PR_COMMAND = "register-current-pr";
 const UNTRACK_CURRENT_PR_COMMAND = "untrack-current-pr";
 const COPY_CURRENT_URL_COMMAND = "copy-current-url";
 
-function normalizePrUrl(rawUrl?: string): string | null {
-  if (!rawUrl) {
-    return null;
-  }
-
-  let parsed: URL;
-  try {
-    parsed = new URL(rawUrl);
-  }
-  catch {
-    return null;
-  }
-
-  if (parsed.hostname !== "github.com") {
-    return null;
-  }
-
-  const match = parsed.pathname.match(GITHUB_PR_URL_PATTERN);
-  if (!match) {
-    return null;
-  }
-
-  const [, owner, repo, number] = match;
-  return `https://github.com/${owner}/${repo}/pull/${number}`;
-}
-
-function isConversationView(rawUrl?: string): boolean {
-  if (!rawUrl) {
-    return false;
-  }
-
-  let parsed: URL;
-  try {
-    parsed = new URL(rawUrl);
-  }
-  catch {
-    return false;
-  }
-
-  if (parsed.hostname !== "github.com") {
-    return false;
-  }
-
-  // Conversation view has no /files, /commits, or other suffix
-  // Pattern: /owner/repo/pull/number (and optionally nothing or just ?)
-  const match = parsed.pathname.match(GITHUB_PR_URL_PATTERN);
-  if (!match) {
-    return false;
-  }
-
-  // Check if the path ends at the pull number (no /files, /commits, etc.)
-  const pathAfterNumber = parsed.pathname.replace(match[0], "");
-  return pathAfterNumber === "";
-}
 
 async function getTrackedPrs(): Promise<Record<string, TrackedPrEntry>> {
   if (!extensionApi?.storage?.local) {
@@ -720,32 +670,6 @@ async function handlePersistentHomeTabRemoved(tabId: number): Promise<void> {
   await restorePersistentHomeTab(targetEntry);
 }
 
-function applyPrEvents(events: PrEvent[]): PrState {
-  let state: PrState = "working";
-
-  for (const event of events) {
-    if (event === "merged") {
-      state = "merged";
-      continue;
-    }
-
-    if (event === "review_requested") {
-      state = "reviewing";
-      continue;
-    }
-
-    if (event === "approved") {
-      state = "merge_waiting";
-      continue;
-    }
-
-    if (event === "commented" && state === "merge_waiting") {
-      state = "working";
-    }
-  }
-
-  return state;
-}
 
 async function moveTabToStateGroup(tabId: number, windowId: number, state: PrState): Promise<void> {
   if (!extensionApi?.tabs || !extensionApi?.tabGroups) {

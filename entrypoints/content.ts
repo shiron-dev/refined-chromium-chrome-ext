@@ -1,4 +1,10 @@
-type PrEvent = "review_requested" | "approved" | "commented" | "reviewed" | "changes_requested" | "merged";
+import {
+  type PrEvent,
+  normalizeText,
+  isBotAccountName,
+  collectTimelineEvents as collectTimelineEventsFromDoc,
+} from "../src/utils/pr-detection";
+
 type ReviewerStatus = "has_reviewers" | "no_reviewers" | "unknown";
 type ApprovalStatus = "approved" | "not_approved" | "unknown";
 type CommentStatus = "has_comments" | "no_comments" | "unknown";
@@ -38,38 +44,10 @@ interface ExtensionApiLike {
   }
 }
 
-const SPACING_PATTERN = /\s+/g;
-const REVIEW_REQUEST_PATTERNS = [
-  /requested review from/,
-  /requested a review from/,
-  /review request(ed)?/,
-];
-const APPROVED_PATTERNS = [
-  /approved these changes/,
-  /approved$/,
-  /approved this pull request/,
-];
-const REVIEWED_PATTERNS = [
-  /reviewed/,
-];
-const COMMENTED_PATTERNS = [
-  /left a comment/,
-  /commented/,
-  /left review comments/,
-];
-const CHANGES_REQUESTED_PATTERNS = [
-  /requested changes/,
-  /request(ed)? changes?/,
-];
-const MERGED_PATTERNS = [
-  /merged this pull request/,
-  /merged commit/,
-];
 const NO_REVIEWS_PATTERN = /no reviews?/;
 const APPROVED_CHANGES_PATTERN = /approved these changes/;
 const REVIEW_COMMENTS_PATTERN = /left review comments?/;
 const AWAITING_REVIEW_PATTERN = /awaiting requested review from/;
-const BOT_SUFFIX_PATTERN = /\[bot\]$/;
 const PR_NUMBER_SUFFIX_PATTERN = /\s*#\d+\s*$/u;
 const COPY_TOAST_ID = "refined-chromium-copy-toast";
 const COPY_TOAST_DURATION_MS = 1600;
@@ -77,22 +55,6 @@ const COPY_TOAST_DURATION_MS = 1600;
 const extensionApi = (globalThis as { chrome?: ExtensionApiLike }).chrome;
 let copyToastTimer: number | undefined;
 
-function normalizeText(raw: string): string {
-  return raw.replace(SPACING_PATTERN, " ").trim().toLowerCase();
-}
-
-function isBotAccountName(name: string): boolean {
-  return BOT_SUFFIX_PATTERN.test(name.trim().toLowerCase());
-}
-
-function isBotTimelineItem(item: HTMLElement): boolean {
-  if (item.querySelector("[href*='[bot]'], [data-hovercard-url*='[bot]']")) {
-    return true;
-  }
-
-  const labelTexts = Array.from(item.querySelectorAll<HTMLElement>(".Label--secondary, .IssueLabel"), node => normalizeText(node.textContent || ""));
-  return labelTexts.includes("bot");
-}
 
 function isBotReviewStatusTooltip(reviewersSection: HTMLElement, tooltip: HTMLElement): boolean {
   const statusAnchorId = tooltip.getAttribute("for");
@@ -118,33 +80,6 @@ function isBotReviewStatusTooltip(reviewersSection: HTMLElement, tooltip: HTMLEl
   return reviewerText.includes("[bot]");
 }
 
-function detectEventFromText(text: string): PrEvent | null {
-  if (MERGED_PATTERNS.some(pattern => pattern.test(text))) {
-    return "merged";
-  }
-
-  if (CHANGES_REQUESTED_PATTERNS.some(pattern => pattern.test(text))) {
-    return "changes_requested";
-  }
-
-  if (REVIEWED_PATTERNS.some(pattern => pattern.test(text))) {
-    return "reviewed";
-  }
-
-  if (REVIEW_REQUEST_PATTERNS.some(pattern => pattern.test(text))) {
-    return "review_requested";
-  }
-
-  if (APPROVED_PATTERNS.some(pattern => pattern.test(text))) {
-    return "approved";
-  }
-
-  if (COMMENTED_PATTERNS.some(pattern => pattern.test(text))) {
-    return "commented";
-  }
-
-  return null;
-}
 
 function getSidebarReviewerStatus(): ReviewerStatus {
   const reviewersSection = document.querySelector<HTMLElement>(
@@ -260,27 +195,7 @@ function getSidebarCommentStatus(): CommentStatus {
 }
 
 function collectTimelineEvents(): PrEvent[] {
-  const timelineItems = [...document.querySelectorAll<HTMLElement>(".js-timeline-item, .TimelineItem")];
-
-  const events: PrEvent[] = [];
-
-  for (const item of timelineItems) {
-    if (isBotTimelineItem(item)) {
-      continue;
-    }
-
-    const text = normalizeText(item.textContent || "");
-    if (!text) {
-      continue;
-    }
-
-    const event = detectEventFromText(text);
-    if (event) {
-      events.push(event);
-    }
-  }
-
-  return events;
+  return collectTimelineEventsFromDoc(document);
 }
 
 function getPrTitle(): string | null {
