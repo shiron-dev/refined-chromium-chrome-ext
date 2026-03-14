@@ -1,6 +1,6 @@
-import { readFileSync } from "fs";
-import { dirname, resolve } from "path";
-import { fileURLToPath } from "url";
+import { readFileSync } from "node:fs";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { beforeEach, describe, expect, it } from "vitest";
 import {
   collectTimelineEvents,
@@ -125,27 +125,27 @@ describe("isBotTimelineItem", () => {
   });
 
   it("returns true when element has href with [bot]", () => {
-    container.innerHTML = `<a href="/apps/dependabot[bot]">dependabot</a>`;
+    container.innerHTML = "<a href=\"/apps/dependabot[bot]\">dependabot</a>";
     expect(isBotTimelineItem(container)).toBe(true);
   });
 
   it("returns true when element has data-hovercard-url with [bot]", () => {
-    container.innerHTML = `<span data-hovercard-url="/users/renovate[bot]/hovercard">renovate</span>`;
+    container.innerHTML = "<span data-hovercard-url=\"/users/renovate[bot]/hovercard\">renovate</span>";
     expect(isBotTimelineItem(container)).toBe(true);
   });
 
   it("returns true when Label--secondary contains 'bot'", () => {
-    container.innerHTML = `<span class="Label--secondary">bot</span>`;
+    container.innerHTML = "<span class=\"Label--secondary\">bot</span>";
     expect(isBotTimelineItem(container)).toBe(true);
   });
 
   it("returns true when IssueLabel contains 'bot'", () => {
-    container.innerHTML = `<span class="IssueLabel">bot</span>`;
+    container.innerHTML = "<span class=\"IssueLabel\">bot</span>";
     expect(isBotTimelineItem(container)).toBe(true);
   });
 
   it("returns false for regular user elements", () => {
-    container.innerHTML = `<a href="/shiron">shiron approved these changes</a>`;
+    container.innerHTML = "<a href=\"/shiron\">shiron approved these changes</a>";
     expect(isBotTimelineItem(container)).toBe(false);
   });
 });
@@ -204,7 +204,12 @@ describe("collectTimelineEvents with HTML fixtures", () => {
     const doc = parser.parseFromString(html, "text/html");
     const events = collectTimelineEvents(doc);
     expect(events).toEqual([
-      "reviewed", "reviewed", "changes_requested", "changes_requested", "reviewed", "reviewed",
+      "reviewed",
+      "reviewed",
+      "changes_requested",
+      "changes_requested",
+      "reviewed",
+      "reviewed",
     ]);
   });
 
@@ -213,10 +218,24 @@ describe("collectTimelineEvents with HTML fixtures", () => {
     const doc = parser.parseFromString(html, "text/html");
     const events = collectTimelineEvents(doc);
     expect(events).toEqual([
-      "reviewed", "reviewed", "changes_requested", "changes_requested",
-      "reviewed", "reviewed", "reviewed", "reviewed", "reviewed", "reviewed",
-      "changes_requested", "changes_requested", "reviewed", "reviewed",
-      "reviewed", "reviewed", "reviewed", "reviewed",
+      "reviewed",
+      "reviewed",
+      "changes_requested",
+      "changes_requested",
+      "reviewed",
+      "reviewed",
+      "reviewed",
+      "reviewed",
+      "reviewed",
+      "reviewed",
+      "changes_requested",
+      "changes_requested",
+      "reviewed",
+      "reviewed",
+      "reviewed",
+      "reviewed",
+      "reviewed",
+      "reviewed",
     ]);
   });
 
@@ -225,9 +244,18 @@ describe("collectTimelineEvents with HTML fixtures", () => {
     const doc = parser.parseFromString(html, "text/html");
     const events = collectTimelineEvents(doc);
     expect(events).toEqual([
-      "reviewed", "reviewed", "changes_requested", "changes_requested",
-      "reviewed", "reviewed", "reviewed", "reviewed", "reviewed", "reviewed",
-      "changes_requested", "changes_requested",
+      "reviewed",
+      "reviewed",
+      "changes_requested",
+      "changes_requested",
+      "reviewed",
+      "reviewed",
+      "reviewed",
+      "reviewed",
+      "reviewed",
+      "reviewed",
+      "changes_requested",
+      "changes_requested",
     ]);
   });
 
@@ -236,8 +264,14 @@ describe("collectTimelineEvents with HTML fixtures", () => {
     const doc = parser.parseFromString(html, "text/html");
     const events = collectTimelineEvents(doc);
     expect(events).toEqual([
-      "reviewed", "reviewed", "changes_requested", "changes_requested",
-      "reviewed", "reviewed", "reviewed", "reviewed",
+      "reviewed",
+      "reviewed",
+      "changes_requested",
+      "changes_requested",
+      "reviewed",
+      "reviewed",
+      "reviewed",
+      "reviewed",
     ]);
   });
 });

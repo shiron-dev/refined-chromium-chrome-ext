@@ -1,8 +1,9 @@
+import type { PrEvent } from "../src/utils/pr-detection";
 import {
-  type PrEvent,
-  normalizeText,
-  isBotAccountName,
   collectTimelineEvents as collectTimelineEventsFromDoc,
+  isBotAccountName,
+  normalizeText,
+
 } from "../src/utils/pr-detection";
 
 type ReviewerStatus = "has_reviewers" | "no_reviewers" | "unknown";
@@ -55,7 +56,6 @@ const COPY_TOAST_DURATION_MS = 1600;
 const extensionApi = (globalThis as { chrome?: ExtensionApiLike }).chrome;
 let copyToastTimer: number | undefined;
 
-
 function isBotReviewStatusTooltip(reviewersSection: HTMLElement, tooltip: HTMLElement): boolean {
   const statusAnchorId = tooltip.getAttribute("for");
   if (!statusAnchorId) {
@@ -79,7 +79,6 @@ function isBotReviewStatusTooltip(reviewersSection: HTMLElement, tooltip: HTMLEl
   const reviewerText = normalizeText(reviewerContainer?.textContent || "");
   return reviewerText.includes("[bot]");
 }
-
 
 function getSidebarReviewerStatus(): ReviewerStatus {
   const reviewersSection = document.querySelector<HTMLElement>(

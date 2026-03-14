@@ -1,10 +1,11 @@
+import type { BackgroundPrEvent as PrEvent, PrState } from "../src/utils/background-utils";
 import {
-  type PrState,
-  type BackgroundPrEvent as PrEvent,
-  normalizePrUrl,
-  isConversationView,
   applyPrEvents,
+  isConversationView,
+  normalizePrUrl,
+
 } from "../src/utils/background-utils";
+
 type ReviewerStatus = "has_reviewers" | "no_reviewers" | "unknown";
 type ApprovalStatus = "approved" | "not_approved" | "unknown";
 type CommentStatus = "has_comments" | "no_comments" | "unknown";
@@ -250,7 +251,6 @@ const extensionApi = (globalThis as unknown as { chrome?: ExtensionApiLike }).ch
 const REGISTER_CURRENT_PR_COMMAND = "register-current-pr";
 const UNTRACK_CURRENT_PR_COMMAND = "untrack-current-pr";
 const COPY_CURRENT_URL_COMMAND = "copy-current-url";
-
 
 async function getTrackedPrs(): Promise<Record<string, TrackedPrEntry>> {
   if (!extensionApi?.storage?.local) {
@@ -669,7 +669,6 @@ async function handlePersistentHomeTabRemoved(tabId: number): Promise<void> {
 
   await restorePersistentHomeTab(targetEntry);
 }
-
 
 async function moveTabToStateGroup(tabId: number, windowId: number, state: PrState): Promise<void> {
   if (!extensionApi?.tabs || !extensionApi?.tabGroups) {
