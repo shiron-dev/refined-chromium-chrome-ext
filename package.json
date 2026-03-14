@@ -41,13 +41,7 @@
     "typescript": "^5.9.3",
     "vite": "6.3.5",
     "vite-tsconfig-paths": "^5.1.4",
-    "vitest": "^4.1.0",
+    "vitest": "^3.0.0",
     "wxt": "^0.20.18"
-  },
-  "pnpm": {
-    "overrides": {
-      "vite": "5.4.21",
-      "vitest>vite": "^6.3.5"
-    }
   }
 }
