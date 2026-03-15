@@ -32,6 +32,11 @@ export interface NavigationHandler {
   ) => void | Promise<void>
 }
 
+/** Tab activated handler */
+export interface TabActivatedHandler {
+  handler: (activeInfo: chrome.tabs.OnActivatedInfo) => void | Promise<void>
+}
+
 /** Tab removed handler */
 export interface TabRemovedHandler {
   handler: (
@@ -63,5 +68,6 @@ export interface ModuleManifest {
   contentHandlers?: Record<string, ContentMessageHandler>
   commandHandlers?: CommandHandler[]
   navigationHandlers?: NavigationHandler[]
+  tabActivatedHandlers?: TabActivatedHandler[]
   tabRemovedHandlers?: TabRemovedHandler[]
 }
