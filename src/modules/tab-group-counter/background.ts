@@ -26,7 +26,7 @@ export const backgroundHandlers: Record<string, BackgroundMessageHandler> = {
       {},
     );
 
-    const groups = (allGroups as Array<{ id: number; title?: string; color: string; windowId: number }>).map(
+    const groups = (allGroups as Array<{ id: number, title?: string, color: string, windowId: number }>).map(
       group => ({
         id: group.id,
         title: group.title ?? "",

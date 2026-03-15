@@ -18,8 +18,11 @@ const TAB_GROUP_COLORS: Record<string, string> = {
   orange: "#fa903e",
 };
 
+const NAME_REGEX = /\{name\}/g;
+const COUNT_REGEX = /\{count\}/g;
+
 function applyFormat(format: string, name: string, count: number): string {
-  return format.replace(/\{name\}/g, name).replace(/\{count\}/g, String(count));
+  return format.replace(NAME_REGEX, name).replace(COUNT_REGEX, String(count));
 }
 
 async function fetchGroups(): Promise<TabGroupCounterState> {
@@ -76,7 +79,7 @@ export default function TabGroupCounterScreen({
     if (ok) {
       setFormat(editingFormat);
       setSaved(true);
-      setTimeout(() => setSaved(false), 1500);
+      setTimeout(setSaved, 1500, false);
     }
   }, [editingFormat]);
 
@@ -118,10 +121,9 @@ export default function TabGroupCounterScreen({
         <h2 style={{ margin: "0 0 8px", fontSize: 14 }}>表示フォーマット</h2>
         <p style={{ margin: "0 0 6px", fontSize: 12, color: "#6b7280" }}>
           <code style={{ background: "#f3f4f6", borderRadius: 4, padding: "1px 4px" }}>{"{name}"}</code>
-          {" "}= グループ名、
-          {" "}
+          {" = グループ名、 "}
           <code style={{ background: "#f3f4f6", borderRadius: 4, padding: "1px 4px" }}>{"{count}"}</code>
-          {" "}= タブ数
+          {" = タブ数"}
         </p>
         <div style={{ display: "flex", gap: 6 }}>
           <input
