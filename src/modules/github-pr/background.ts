@@ -10,6 +10,7 @@ import {
 
 } from "../../utils/background-utils";
 import { extensionApi, getCurrentActiveTab } from "../../utils/extension-api";
+import type { BrowserTab } from "../../utils/extension-api";
 
 type ReviewerStatus = "has_reviewers" | "no_reviewers" | "unknown";
 type ApprovalStatus = "approved" | "not_approved" | "unknown";
