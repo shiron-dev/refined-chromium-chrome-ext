@@ -16,7 +16,7 @@ export default defineConfig({
     name: "GitHub PR Tab Group Manager",
     version: "1.0",
     description: "Track GitHub pull requests and auto-group tabs by review status.",
-    permissions: ["activeTab", "tabs", "tabGroups", "storage", "webNavigation", "scripting"],
+    permissions: ["activeTab", "tabs", "tabGroups", "storage", "webNavigation", "scripting", "offscreen", "clipboardWrite"],
     host_permissions: ["http://*/*", "https://*/*"],
     icons: {
       16: "icon16.png",
