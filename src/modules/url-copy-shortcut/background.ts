@@ -7,6 +7,9 @@ interface BrowserTab {
 }
 
 const extensionApi = (globalThis as unknown as { chrome?: any }).chrome;
+const OFFSCREEN_DOCUMENT_PATH = "/offscreen.html";
+
+let creatingOffscreenDocument: Promise<void> | null = null;
 
 async function getCurrentActiveTab(): Promise<BrowserTab | null> {
   if (!extensionApi?.tabs) {
@@ -19,7 +22,7 @@ async function getCurrentActiveTab(): Promise<BrowserTab | null> {
 
 export const backgroundHandlers: Record<string, BackgroundMessageHandler> = {
   copy: async () => {
-    if (!extensionApi?.tabs || !extensionApi?.scripting) {
+    if (!extensionApi?.tabs || !extensionApi?.scripting || !extensionApi?.offscreen || !extensionApi?.runtime) {
       return { ok: false, reason: "no_active_tab" };
     }
 
@@ -29,38 +32,18 @@ export const backgroundHandlers: Record<string, BackgroundMessageHandler> = {
     }
 
     try {
-      const results = await extensionApi.scripting.executeScript({
+      await ensureOffscreenDocument();
+      const copyResult = await extensionApi.runtime.sendMessage({
+        type: "url-copy-shortcut/copy",
+        text: tab.url,
+      });
+
+      const isCopied = Boolean(copyResult?.ok);
+
+      await extensionApi.scripting.executeScript({
         target: { tabId: tab.id },
-        func: async (url: string) => {
+        func: (isSuccess: boolean) => {
           const toastId = "refined-chromium-copy-toast";
-
-          const fallbackCopyTextToClipboard = (value: string): boolean => {
-            const textarea = document.createElement("textarea");
-            textarea.value = value;
-            textarea.setAttribute("readonly", "true");
-            textarea.style.position = "fixed";
-            textarea.style.top = "0";
-            textarea.style.left = "0";
-            textarea.style.opacity = "0";
-
-            const activeElement = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-
-            document.body.append(textarea);
-            textarea.focus();
-            textarea.select();
-            textarea.setSelectionRange(0, value.length);
-
-            try {
-              return document.execCommand("copy");
-            }
-            catch {
-              return false;
-            }
-            finally {
-              textarea.remove();
-              activeElement?.focus();
-            }
-          };
 
           const showToast = (message: string, tone: "success" | "warn"): void => {
             const existing = document.getElementById(toastId);
@@ -101,28 +84,12 @@ export const backgroundHandlers: Record<string, BackgroundMessageHandler> = {
             }, 1600);
           };
 
-          let ok = false;
-
-          if (navigator.clipboard?.writeText) {
-            try {
-              await navigator.clipboard.writeText(url);
-              ok = true;
-            }
-            catch {
-              ok = fallbackCopyTextToClipboard(url);
-            }
-          }
-          else {
-            ok = fallbackCopyTextToClipboard(url);
-          }
-
-          showToast(ok ? "URLをコピーしました" : "URLのコピーに失敗しました", ok ? "success" : "warn");
-          return ok;
+          showToast(isSuccess ? "URLをコピーしました" : "URLのコピーに失敗しました", isSuccess ? "success" : "warn");
         },
-        args: [tab.url],
+        args: [isCopied],
       });
 
-      return { ok: Boolean(results[0]?.result), reason: results[0]?.result ? undefined : "copy_failed" };
+      return { ok: isCopied, reason: isCopied ? undefined : "copy_failed" };
     }
     catch (error: unknown) {
       console.warn("Failed to copy current URL from shortcut:", error);
@@ -130,6 +97,29 @@ export const backgroundHandlers: Record<string, BackgroundMessageHandler> = {
     }
   },
 };
+
+async function ensureOffscreenDocument(): Promise<void> {
+  const hasOffscreenDocument = await extensionApi.runtime.getContexts?.({
+    contextTypes: ["OFFSCREEN_DOCUMENT"],
+    documentUrls: [extensionApi.runtime.getURL(OFFSCREEN_DOCUMENT_PATH)],
+  });
+
+  if (hasOffscreenDocument?.length > 0) {
+    return;
+  }
+
+  if (!creatingOffscreenDocument) {
+    creatingOffscreenDocument = extensionApi.offscreen.createDocument({
+      url: OFFSCREEN_DOCUMENT_PATH,
+      reasons: ["CLIPBOARD"],
+      justification: "Copy the current tab URL using extension context instead of page context.",
+    }).finally(() => {
+      creatingOffscreenDocument = null;
+    });
+  }
+
+  await creatingOffscreenDocument;
+}
 
 export const commandHandlers: CommandHandler[] = [
   {
