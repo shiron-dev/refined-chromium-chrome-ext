@@ -9,6 +9,7 @@ import {
   normalizePrUrl,
 
 } from "../../utils/background-utils";
+import { extensionApi, getCurrentActiveTab } from "../../utils/extension-api";
 
 type ReviewerStatus = "has_reviewers" | "no_reviewers" | "unknown";
 type ApprovalStatus = "approved" | "not_approved" | "unknown";
@@ -20,20 +21,9 @@ interface TrackedPrEntry {
   title: string | null
 }
 
-interface BrowserTab {
-  id?: number
-  url?: string
-  windowId?: number
-  title?: string
-  index?: number
-  groupId?: number
-  active?: boolean
-}
-
 type TabGroupColor = "grey" | "blue" | "green" | "purple";
 
 const storage = createModuleStorage("githubPr");
-const extensionApi = (globalThis as unknown as { chrome?: any }).chrome;
 
 const GROUP_TITLE_BY_STATE: Record<PrState, string> = {
   working: "PR作業/確認中",
@@ -63,15 +53,6 @@ async function getTrackedPrs(): Promise<Record<string, TrackedPrEntry>> {
 
 async function setTrackedPrs(trackedPrs: Record<string, TrackedPrEntry>): Promise<void> {
   await storage.set("trackedPrs", trackedPrs);
-}
-
-async function getCurrentActiveTab(): Promise<BrowserTab | null> {
-  if (!extensionApi?.tabs) {
-    return null;
-  }
-
-  const tabs = await extensionApi.tabs.query({ active: true, currentWindow: true });
-  return tabs[0] ?? null;
 }
 
 async function moveTabToStateGroup(tabId: number, windowId: number, state: PrState): Promise<void> {

@@ -1,11 +1,10 @@
-import type { CSSProperties } from "react";
-
 import type { ModuleManifest, PopupCard } from "../../src/core/types";
 
 import { useCallback, useEffect, useState } from "react";
 
 import { registry } from "../../src/core/registry";
 import { getModuleSettings, setModuleEnabled } from "../../src/core/settings";
+import { baseCardStyle } from "../../src/popup/styles";
 
 // Auto-collect all module manifests
 const moduleFiles = import.meta.glob<{ default: ModuleManifest }>(
@@ -16,13 +15,6 @@ const moduleFiles = import.meta.glob<{ default: ModuleManifest }>(
 for (const mod of Object.values(moduleFiles)) {
   registry.register(mod.default);
 }
-
-const baseCardStyle: CSSProperties = {
-  border: "1px solid #d1d5db",
-  borderRadius: 10,
-  padding: 12,
-  background: "#ffffff",
-};
 
 interface ModuleSettings {
   [moduleId: string]: { enabled: boolean }
