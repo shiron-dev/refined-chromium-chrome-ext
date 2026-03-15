@@ -36,7 +36,7 @@ export interface NavigationHandler {
 export interface TabRemovedHandler {
   handler: (
     tabId: number,
-    removeInfo: chrome.tabs.TabRemoveInfo,
+    removeInfo: chrome.tabs.OnRemovedInfo,
   ) => void | Promise<void>
 }
 
