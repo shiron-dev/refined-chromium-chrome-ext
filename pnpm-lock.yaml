@@ -6,7 +6,7 @@ settings:
 
 overrides:
   chokidar@^4.0.0: 4.0.1
-  undici-types@~6.21.0: 6.23.0
+  undici-types@~6.21.0: 7.24.0
   semver@^6.0.0: 7.7.4
 
 importers:
@@ -4104,8 +4104,8 @@ packages:
   uhyphen@0.2.0:
     resolution: {integrity: sha512-qz3o9CHXmJJPGBdqzab7qAYuW8kQGKNEuoHFYrBwV6hWIMcpAmxDLXojcHfFr9US1Pe6zUswEIJIbLI610fuqA==}
 
-  undici-types@6.23.0:
-    resolution: {integrity: sha512-HN7GeXgBUs1StmY/vf9hIH11LrNI5SfqmFVtxKyp9Dhuf1P1cDSRlS+H1NJDaGOWzlI08q+NmiHgu11Vx6QnhA==}
+  undici-types@7.24.0:
+    resolution: {integrity: sha512-1beJCk3fcUtxAHf19TmrEd0yF3Co7El8fJvlSufm9EQNMKVR9H5XiamszDDt/FwinyUQPHpL2w8u9ZL8i8RtVg==}
 
   undici@7.24.3:
     resolution: {integrity: sha512-eJdUmK/Wrx2d+mnWWmwwLRyA7OQCkLap60sk3dOK4ViZR7DKwwptwuIvFBg2HaiP9ESaEdhtpSymQPvytpmkCA==}
@@ -5595,7 +5595,7 @@ snapshots:
 
   '@types/node@20.19.37':
     dependencies:
-      undici-types: 6.23.0
+      undici-types: 7.24.0
 
   '@types/parse-json@4.0.2':
     optional: true
@@ -8684,7 +8684,7 @@ snapshots:
 
   uhyphen@0.2.0: {}
 
-  undici-types@6.23.0: {}
+  undici-types@7.24.0: {}
 
   undici@7.24.3: {}
 
