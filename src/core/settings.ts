@@ -33,6 +33,22 @@ export async function setModuleEnabled(moduleId: string, enabled: boolean): Prom
   await chrome.storage.local.set({ [key]: enabled });
 }
 
+/** Initialize default settings for modules not yet in storage */
+export async function initializeDefaultSettings(defaults: Record<string, { enabled: boolean }>): Promise<void> {
+  const existing = await getModuleSettings();
+  const writes: Record<string, boolean> = {};
+
+  for (const [moduleId, { enabled }] of Object.entries(defaults)) {
+    if (!(moduleId in existing)) {
+      writes[`modules.${moduleId}.enabled`] = enabled;
+    }
+  }
+
+  if (Object.keys(writes).length > 0) {
+    await chrome.storage.local.set(writes);
+  }
+}
+
 /** Perform one-time storage migration from old to new key format */
 export async function migrateStorageIfNeeded(): Promise<void> {
   const data = await chrome.storage.local.get([

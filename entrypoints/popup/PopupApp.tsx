@@ -45,7 +45,7 @@ function HomeScreen({
 
       <div style={{ display: "grid", gap: 12 }}>
         {cards.map((card) => {
-          const enabled = card.settingKey ? moduleSettings[card.settingKey]?.enabled ?? false : true;
+          const enabled = card.settingKey ? moduleSettings[card.settingKey]?.enabled ?? true : true;
 
           return (
             <div
@@ -112,9 +112,13 @@ export default function PopupApp() {
   const [view, setView] = useState<PopupView>("home");
   const [moduleSettings, setModuleSettingsState] = useState<ModuleSettings>({});
 
+  const defaultSettings: ModuleSettings = Object.fromEntries(
+    registry.getAll().map(m => [m.id, { enabled: m.defaultEnabled }]),
+  );
+
   useEffect(() => {
     getModuleSettings()
-      .then(setModuleSettingsState)
+      .then(settings => setModuleSettingsState({ ...defaultSettings, ...settings }))
       .catch((error: unknown) => console.error(error));
   }, []);
 
@@ -130,7 +134,7 @@ export default function PopupApp() {
   const card = cards.find(c => c.id === view);
 
   if (card && view !== "home") {
-    const enabled = card.settingKey ? moduleSettings[card.settingKey]?.enabled ?? false : true;
+    const enabled = card.settingKey ? moduleSettings[card.settingKey]?.enabled ?? true : true;
     const onToggle = card.settingKey
       ? (e: boolean) => handleToggleModule(card.settingKey!, e)
       : undefined;
