@@ -62,7 +62,7 @@ export const tabActivatedHandlers: TabActivatedHandler[] = [
               return false;
             }
 
-            const videos = Array.from(document.querySelectorAll<HTMLVideoElement>("video"));
+            const videos = [...document.querySelectorAll<HTMLVideoElement>("video")];
             const playing = videos.find(v => !v.paused && !v.ended && v.readyState > 2);
             if (!playing) {
               return false;
