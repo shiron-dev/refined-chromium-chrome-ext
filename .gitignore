@@ -12,3 +12,8 @@
 /.wxt/
 /.output/
 /dev/
+
+# Playwright / E2E
+/coverage/
+/playwright-report/
+/test-results/
