@@ -43,5 +43,10 @@
     "vite-tsconfig-paths": "^5.1.4",
     "vitest": "^3.0.0",
     "wxt": "^0.20.18"
+  },
+  "pnpm": {
+    "overrides": {
+      "@vitejs/plugin-react": "^5.1.0"
+    }
   }
 }
