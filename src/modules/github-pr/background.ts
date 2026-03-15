@@ -1,9 +1,15 @@
 import type { BackgroundMessageHandler, CommandHandler, NavigationHandler } from "../../core/types";
+import type { PrState } from "../../utils/background-utils";
+import type { PrEvent } from "../../utils/pr-detection";
 import type { PopupStateResponse, ReloadTrackedPrsResponse, UntrackResponse } from "./popup/types";
 import { createModuleStorage } from "../../core/storage";
+import {
+  applyPrEvents,
+  isConversationView,
+  normalizePrUrl,
 
-type PrState = "working" | "reviewing" | "merge_waiting" | "merged";
-type PrEvent = "review_requested" | "approved" | "commented" | "merged";
+} from "../../utils/background-utils";
+
 type ReviewerStatus = "has_reviewers" | "no_reviewers" | "unknown";
 type ApprovalStatus = "approved" | "not_approved" | "unknown";
 type CommentStatus = "has_comments" | "no_comments" | "unknown";
@@ -29,8 +35,6 @@ type TabGroupColor = "grey" | "blue" | "green" | "purple";
 const storage = createModuleStorage("githubPr");
 const extensionApi = (globalThis as unknown as { chrome?: any }).chrome;
 
-const GITHUB_PR_URL_PATTERN = /^\/([^/]+)\/([^/]+)\/pull\/(\d+)(?:\/.*)?$/;
-
 const GROUP_TITLE_BY_STATE: Record<PrState, string> = {
   working: "PR作業/確認中",
   reviewing: "PRレビュー中",
@@ -52,58 +56,6 @@ const PR_STATE_ORDER: Record<PrState, number> = {
   merged: 3,
 };
 
-function normalizePrUrl(rawUrl?: string): string | null {
-  if (!rawUrl) {
-    return null;
-  }
-
-  let parsed: URL;
-  try {
-    parsed = new URL(rawUrl);
-  }
-  catch {
-    return null;
-  }
-
-  if (parsed.hostname !== "github.com") {
-    return null;
-  }
-
-  const match = parsed.pathname.match(GITHUB_PR_URL_PATTERN);
-  if (!match) {
-    return null;
-  }
-
-  const [, owner, repo, number] = match;
-  return `https://github.com/${owner}/${repo}/pull/${number}`;
-}
-
-function isConversationView(rawUrl?: string): boolean {
-  if (!rawUrl) {
-    return false;
-  }
-
-  let parsed: URL;
-  try {
-    parsed = new URL(rawUrl);
-  }
-  catch {
-    return false;
-  }
-
-  if (parsed.hostname !== "github.com") {
-    return false;
-  }
-
-  const match = parsed.pathname.match(GITHUB_PR_URL_PATTERN);
-  if (!match) {
-    return false;
-  }
-
-  const pathAfterNumber = parsed.pathname.replace(match[0], "");
-  return pathAfterNumber === "";
-}
-
 async function getTrackedPrs(): Promise<Record<string, TrackedPrEntry>> {
   const data = await storage.get<Record<string, TrackedPrEntry>>("trackedPrs");
   return data ?? {};
@@ -120,33 +72,6 @@ async function getCurrentActiveTab(): Promise<BrowserTab | null> {
 
   const tabs = await extensionApi.tabs.query({ active: true, currentWindow: true });
   return tabs[0] ?? null;
-}
-
-function applyPrEvents(events: PrEvent[]): PrState {
-  let state: PrState = "working";
-
-  for (const event of events) {
-    if (event === "merged") {
-      state = "merged";
-      continue;
-    }
-
-    if (event === "review_requested") {
-      state = "reviewing";
-      continue;
-    }
-
-    if (event === "approved") {
-      state = "merge_waiting";
-      continue;
-    }
-
-    if (event === "commented" && state === "merge_waiting") {
-      state = "working";
-    }
-  }
-
-  return state;
 }
 
 async function moveTabToStateGroup(tabId: number, windowId: number, state: PrState): Promise<void> {
@@ -457,7 +382,7 @@ export const backgroundHandlers: Record<string, BackgroundMessageHandler> = {
     const eventsForResolvedState: PrEvent[] = payload.approvalStatus === "approved"
       ? [...eventsForComment, approvedEvent]
       : eventsForComment;
-    let nextState = applyPrEvents(eventsForResolvedState);
+    let nextState = applyPrEvents(eventsForResolvedState as any);
 
     // Current sidebar statuses should win over historical timeline signals.
     if (payload.commentStatus === "has_comments" && nextState !== "merged") {
