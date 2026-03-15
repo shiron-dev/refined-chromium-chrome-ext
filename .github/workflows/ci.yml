@@ -81,14 +81,14 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: shiron-dev/actions/renovate-deps-comment@d898596addf114b0b4a4cd9a984775410e248e10 # v1.6.2
+      - uses: shiron-dev/actions/renovate-deps-comment@0cc65c3143f6a0d119fa8085c8b2ae3dd25e657b # v1.6.3
 
   ts-check:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
-      - uses: shiron-dev/actions/setup-node@d898596addf114b0b4a4cd9a984775410e248e10 # v1.6.2
+      - uses: shiron-dev/actions/setup-node@0cc65c3143f6a0d119fa8085c8b2ae3dd25e657b # v1.6.3
       - name: Install dependencies
         run: pnpm install
       - name: Run typecheck
@@ -101,7 +101,7 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
-      - uses: shiron-dev/actions/setup-node@d898596addf114b0b4a4cd9a984775410e248e10 # v1.6.2
+      - uses: shiron-dev/actions/setup-node@0cc65c3143f6a0d119fa8085c8b2ae3dd25e657b # v1.6.3
       - name: Install dependencies
         run: pnpm install
       - name: Run build
@@ -112,7 +112,7 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
-      - uses: shiron-dev/actions/setup-node@d898596addf114b0b4a4cd9a984775410e248e10 # v1.6.2
+      - uses: shiron-dev/actions/setup-node@0cc65c3143f6a0d119fa8085c8b2ae3dd25e657b # v1.6.3
       - name: Install dependencies
         run: pnpm install
       - name: Run test
