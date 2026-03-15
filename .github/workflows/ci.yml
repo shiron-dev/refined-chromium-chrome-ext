@@ -137,10 +137,16 @@ jobs:
         run: pnpm install
       - name: Install Playwright browsers
         run: pnpm playwright install chromium --with-deps
-      - name: Build extension
+      - name: Build extension with coverage instrumentation
         run: pnpm build
+        env:
+          E2E_COVERAGE: "true"
       - name: Run E2E tests
         run: pnpm test:e2e
+        env:
+          E2E_COVERAGE: "true"
+      - name: Generate E2E coverage report
+        run: pnpm exec nyc report
       - name: Upload E2E coverage to Codecov
         uses: codecov/codecov-action@v5
         with:
