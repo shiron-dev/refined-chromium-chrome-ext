@@ -1,0 +1,74 @@
+name: Update pnpm Lockfile
+
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: Branch to update lockfile on
+        required: true
+        default: main
+
+permissions:
+  contents: write
+
+jobs:
+  update-lockfile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          ref: ${{ github.event.inputs.branch }}
+      - uses: shiron-dev/actions/setup-node@0cc65c3143f6a0d119fa8085c8b2ae3dd25e657b # v1.6.3
+      - name: Update lockfile
+        run: pnpm install --no-frozen-lockfile
+      - name: Push signed commit
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+        with:
+          script: |
+            const fs = require('fs');
+
+            const branch = '${{ github.event.inputs.branch }}';
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+
+            const { execSync } = require('child_process');
+            const diff = execSync('git diff --name-only').toString().trim();
+            if (!diff.includes('pnpm-lock.yaml')) {
+              console.log('No changes to pnpm-lock.yaml, skipping commit');
+              return;
+            }
+
+            const { data: ref } = await github.rest.git.getRef({
+              owner,
+              repo,
+              ref: `heads/${branch}`,
+            });
+            const currentSHA = ref.object.sha;
+
+            const lockfileContent = fs.readFileSync('pnpm-lock.yaml', 'utf8');
+            const fileContents = Buffer.from(lockfileContent).toString('base64');
+
+            const mutation = `
+              mutation CreateCommit($input: CreateCommitOnBranchInput!) {
+                createCommitOnBranch(input: $input) {
+                  commit { url }
+                }
+              }
+            `;
+
+            const result = await github.graphql(mutation, {
+              input: {
+                branch: {
+                  repositoryNameWithOwner: `${owner}/${repo}`,
+                  branchName: branch,
+                },
+                message: { headline: 'chore: update pnpm lockfile' },
+                fileChanges: {
+                  additions: [{ path: 'pnpm-lock.yaml', contents: fileContents }],
+                },
+                expectedHeadOid: currentSHA,
+              },
+            });
+
+            console.log('Committed:', result.createCommitOnBranch.commit.url);
