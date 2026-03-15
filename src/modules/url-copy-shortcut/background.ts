@@ -7,9 +7,6 @@ interface BrowserTab {
 }
 
 const extensionApi = (globalThis as unknown as { chrome?: any }).chrome;
-const OFFSCREEN_DOCUMENT_PATH = "/offscreen.html";
-
-let creatingOffscreenDocument: Promise<void> | null = null;
 
 async function getCurrentActiveTab(): Promise<BrowserTab | null> {
   if (!extensionApi?.tabs) {
@@ -22,7 +19,7 @@ async function getCurrentActiveTab(): Promise<BrowserTab | null> {
 
 export const backgroundHandlers: Record<string, BackgroundMessageHandler> = {
   copy: async () => {
-    if (!extensionApi?.tabs || !extensionApi?.scripting || !extensionApi?.offscreen || !extensionApi?.runtime) {
+    if (!extensionApi?.tabs || !extensionApi?.scripting) {
       return { ok: false, reason: "no_active_tab" };
     }
 
@@ -32,17 +29,52 @@ export const backgroundHandlers: Record<string, BackgroundMessageHandler> = {
     }
 
     try {
-      await ensureOffscreenDocument();
-      const copyResult = await extensionApi.runtime.sendMessage({
-        type: "url-copy-shortcut/copy",
-        text: tab.url,
-      });
-
-      const isCopied = Boolean(copyResult?.ok);
-
-      await extensionApi.scripting.executeScript({
+      const results = await extensionApi.scripting.executeScript({
         target: { tabId: tab.id },
-        func: (isSuccess: boolean) => {
+        func: async (url: string) => {
+          const fallbackCopyTextToClipboard = (text: string): boolean => {
+            const textarea = document.createElement("textarea");
+            textarea.value = text;
+            textarea.setAttribute("readonly", "true");
+            textarea.style.position = "fixed";
+            textarea.style.top = "0";
+            textarea.style.left = "0";
+            textarea.style.opacity = "0";
+
+            const activeElement = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+
+            document.body.append(textarea);
+            textarea.focus();
+            textarea.select();
+            textarea.setSelectionRange(0, text.length);
+
+            try {
+              return document.execCommand("copy");
+            }
+            catch {
+              return false;
+            }
+            finally {
+              textarea.remove();
+              activeElement?.focus();
+            }
+          };
+
+          let ok = false;
+
+          if (navigator.clipboard?.writeText) {
+            try {
+              await navigator.clipboard.writeText(url);
+              ok = true;
+            }
+            catch {
+              ok = fallbackCopyTextToClipboard(url);
+            }
+          }
+          else {
+            ok = fallbackCopyTextToClipboard(url);
+          }
+
           const toastId = "refined-chromium-copy-toast";
 
           const showToast = (message: string, tone: "success" | "warn"): void => {
@@ -70,7 +102,7 @@ export const backgroundHandlers: Record<string, BackgroundMessageHandler> = {
             toast.style.transform = "translateY(-6px)";
             toast.style.transition = "opacity 160ms ease, transform 160ms ease";
 
-            (document.body ?? document.documentElement).append(toast);
+            document.body.append(toast);
 
             requestAnimationFrame(() => {
               toast.style.opacity = "1";
@@ -84,12 +116,13 @@ export const backgroundHandlers: Record<string, BackgroundMessageHandler> = {
             }, 1600);
           };
 
-          showToast(isSuccess ? "URLをコピーしました" : "URLのコピーに失敗しました", isSuccess ? "success" : "warn");
+          showToast(ok ? "URLをコピーしました" : "URLのコピーに失敗しました", ok ? "success" : "warn");
+          return ok;
         },
-        args: [isCopied],
+        args: [tab.url],
       });
 
-      return { ok: isCopied, reason: isCopied ? undefined : "copy_failed" };
+      return { ok: Boolean(results[0]?.result), reason: results[0]?.result ? undefined : "copy_failed" };
     }
     catch (error: unknown) {
       console.warn("Failed to copy current URL from shortcut:", error);
@@ -97,29 +130,6 @@ export const backgroundHandlers: Record<string, BackgroundMessageHandler> = {
     }
   },
 };
-
-async function ensureOffscreenDocument(): Promise<void> {
-  const hasOffscreenDocument = await extensionApi.runtime.getContexts?.({
-    contextTypes: ["OFFSCREEN_DOCUMENT"],
-    documentUrls: [extensionApi.runtime.getURL(OFFSCREEN_DOCUMENT_PATH)],
-  });
-
-  if (hasOffscreenDocument?.length > 0) {
-    return;
-  }
-
-  if (!creatingOffscreenDocument) {
-    creatingOffscreenDocument = extensionApi.offscreen.createDocument({
-      url: OFFSCREEN_DOCUMENT_PATH,
-      reasons: ["CLIPBOARD"],
-      justification: "Copy the current tab URL using extension context instead of page context.",
-    }).finally(() => {
-      creatingOffscreenDocument = null;
-    });
-  }
-
-  await creatingOffscreenDocument;
-}
 
 export const commandHandlers: CommandHandler[] = [
   {
