@@ -47,7 +47,7 @@
   "pnpm": {
     "overrides": {
       "@vitejs/plugin-react": "^5.1.0",
-      "chokidar": "4.0.2"
+      "chokidar": "4.0.3"
     }
   }
 }
