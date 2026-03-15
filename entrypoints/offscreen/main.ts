@@ -5,6 +5,7 @@ interface ClipboardCopyMessage {
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   const payload = message as ClipboardCopyMessage;
+
   if (payload?.type !== "url-copy-shortcut/copy" || !payload.text) {
     return false;
   }
