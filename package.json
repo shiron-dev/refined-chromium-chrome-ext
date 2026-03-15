@@ -27,7 +27,8 @@
   },
   "pnpm": {
     "overrides": {
-      "chokidar@^4.0.0": "4.0.1"
+      "chokidar@^4.0.0": "4.0.1",
+      "undici-types@~6.21.0": "6.19.2"
     }
   },
   "devDependencies": {
