@@ -2,7 +2,7 @@ import type { ModuleManifest } from "../src/core/types";
 
 import { createMessageRouter } from "../src/core/messaging";
 import { registry } from "../src/core/registry";
-import { getModuleSettings, migrateStorageIfNeeded } from "../src/core/settings";
+import { getModuleSettings, initializeDefaultSettings, migrateStorageIfNeeded } from "../src/core/settings";
 
 // Auto-collect all module manifests
 const moduleFiles = import.meta.glob<{ default: ModuleManifest }>(
@@ -22,6 +22,7 @@ export default defineBackground(() => {
       console.warn("GitHub PR Tab Group Manager installed");
     }
     await migrateStorageIfNeeded();
+    await initializeDefaultSettings(registry.getDefaultSettings());
   });
 
   chrome.runtime.onMessage?.addListener((message, sender, sendResponse) => {
@@ -34,7 +35,7 @@ export default defineBackground(() => {
     for (const manifest of registry.getAll()) {
       for (const { command: cmd, handler } of manifest.commandHandlers ?? []) {
         if (cmd === command) {
-          if (settings[manifest.id]?.enabled) {
+          if (settings[manifest.id]?.enabled ?? manifest.defaultEnabled) {
             try {
               await handler();
             }
