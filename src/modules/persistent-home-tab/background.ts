@@ -1,8 +1,8 @@
 import type { BackgroundMessageHandler, TabRemovedHandler } from "../../core/types";
+import type { BrowserTab } from "../../utils/extension-api";
 import type { HomeTabStateResponse, PersistentHomeTabItem, RegisterCurrentHomeTabResponse, UnregisterHomeTabResponse } from "./popup/types";
 import { createModuleStorage } from "../../core/storage";
 import { extensionApi, getCurrentActiveTab } from "../../utils/extension-api";
-import type { BrowserTab } from "../../utils/extension-api";
 
 interface PersistentHomeTabEntry {
   id: string

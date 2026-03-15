@@ -1,8 +1,8 @@
+import type { UiStatus } from "../../../popup/styles";
 import type { PopupStateResponse, RegisterResponse, ReloadTrackedPrsResponse, TrackedPrItem, UntrackResponse } from "./types";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { BackButton } from "../../../popup/BackButton";
 import { baseCardStyle, getStatusColor } from "../../../popup/styles";
-import type { UiStatus } from "../../../popup/styles";
 
 const extensionApi = (globalThis as { chrome?: { runtime?: { sendMessage: (msg: unknown) => Promise<any> } } }).chrome;
 

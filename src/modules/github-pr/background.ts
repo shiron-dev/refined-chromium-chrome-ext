@@ -1,5 +1,6 @@
 import type { BackgroundMessageHandler, CommandHandler, NavigationHandler } from "../../core/types";
 import type { PrState } from "../../utils/background-utils";
+import type { BrowserTab } from "../../utils/extension-api";
 import type { PrEvent } from "../../utils/pr-detection";
 import type { PopupStateResponse, ReloadTrackedPrsResponse, UntrackResponse } from "./popup/types";
 import { createModuleStorage } from "../../core/storage";
@@ -10,7 +11,6 @@ import {
 
 } from "../../utils/background-utils";
 import { extensionApi, getCurrentActiveTab } from "../../utils/extension-api";
-import type { BrowserTab } from "../../utils/extension-api";
 
 type ReviewerStatus = "has_reviewers" | "no_reviewers" | "unknown";
 type ApprovalStatus = "approved" | "not_approved" | "unknown";
