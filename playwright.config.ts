@@ -1,28 +1,26 @@
-import { defineConfig, devices } from "@playwright/test";
+import { defineConfig } from "@playwright/test";
+import path from "path";
 
-const extensionPath = process.env.EXTENSION_PATH || "dist";
+const pathToExtension = path.join(import.meta.dirname, ".output/chrome-mv3");
 
 export default defineConfig({
   testDir: "./e2e",
-  fullyParallel: true,
-  forbidOnly: !!process.env.CI,
-  retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI ? 1 : undefined,
-  reporter: "html",
+  fullyParallel: false,
+  retries: 0,
   use: {
-    baseURL: "http://127.0.0.1:3000",
+    headless: false,
   },
-
   projects: [
     {
       name: "chromium",
-      use: devices["Desktop Chrome"],
+      use: {
+        launchOptions: {
+          args: [
+            `--disable-extensions-except=${pathToExtension}`,
+            `--load-extension=${pathToExtension}`,
+          ],
+        },
+      },
     },
   ],
-
-  webServer: {
-    command: "npm run dev",
-    url: "http://127.0.0.1:3000",
-    reuseExistingServer: !process.env.CI,
-  },
 });

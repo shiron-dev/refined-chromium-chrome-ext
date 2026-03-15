@@ -1,13 +1,14 @@
-import { test as base, chromium, type BrowserContext } from "@playwright/test";
+import { type BrowserContext, chromium, test as base } from "@playwright/test";
+import path from "path";
 
-type TestOptions = {
+const pathToExtension = path.join(import.meta.dirname, "../.output/chrome-mv3");
+
+export const test = base.extend<{
   context: BrowserContext;
   extensionId: string;
-};
-
-export const test = base.extend<TestOptions>({
-  context: async ({ }, use) => {
-    const pathToExtension = process.env.EXTENSION_PATH || "dist";
+}>({
+  // eslint-disable-next-line no-empty-pattern
+  context: async ({}, use) => {
     const context = await chromium.launchPersistentContext("", {
       headless: false,
       args: [
@@ -23,10 +24,9 @@ export const test = base.extend<TestOptions>({
     if (!background) {
       background = await context.waitForEvent("serviceworker");
     }
-
     const extensionId = background.url().split("/")[2];
     await use(extensionId);
   },
 });
 
-export { expect } from "@playwright/test";
+export const expect = test.expect;

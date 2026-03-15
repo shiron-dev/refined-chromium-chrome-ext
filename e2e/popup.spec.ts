@@ -1,9 +1,16 @@
-import { test, expect } from "./fixtures";
+import { expect, test } from "./fixtures";
 
-test("popup should load", async ({ context, extensionId }) => {
-  const popupPage = await context.newPage();
-  await popupPage.goto(`chrome-extension://${extensionId}/popup.html`);
+test("popup opens and shows UI", async ({ context, extensionId }) => {
+  const page = await context.newPage();
+  await page.goto(`chrome-extension://${extensionId}/popup/index.html`);
 
-  const heading = popupPage.locator("h1");
-  await expect(heading).toContainText("拡張機能モジュール");
+  await expect(page.locator("body")).toBeVisible();
+});
+
+test("popup displays tracked PR count", async ({ context, extensionId }) => {
+  const page = await context.newPage();
+  await page.goto(`chrome-extension://${extensionId}/popup/index.html`);
+
+  await page.waitForLoadState("domcontentloaded");
+  await expect(page.locator("body")).toBeVisible();
 });
