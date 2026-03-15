@@ -10,6 +10,7 @@ on:
 
 permissions:
   contents: write
+  actions: write
 
 jobs:
   update-lockfile:
@@ -72,3 +73,11 @@ jobs:
             });
 
             console.log('Committed:', result.createCommitOnBranch.commit.url);
+
+            await github.rest.actions.createWorkflowDispatch({
+              owner,
+              repo,
+              workflow_id: 'ci.yml',
+              ref: branch,
+            });
+            console.log('Dispatched main CI workflow on branch:', branch);
