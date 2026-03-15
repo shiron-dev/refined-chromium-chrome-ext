@@ -2,6 +2,7 @@ export type PrState = "working" | "reviewing" | "merge_waiting" | "merged";
 export type BackgroundPrEvent = "review_requested" | "approved" | "commented" | "merged";
 
 const GITHUB_PR_URL_PATTERN = /^\/([^/]+)\/([^/]+)\/pull\/(\d+)(?:\/.*)?$/;
+const CONVERSATION_VIEW_PATTERN = /^\/[^/]+\/[^/]+\/pull\/\d+\/?$/;
 
 export function normalizePrUrl(rawUrl?: string): string | null {
   if (!rawUrl) {
@@ -46,15 +47,7 @@ export function isConversationView(rawUrl?: string): boolean {
     return false;
   }
 
-  const match = parsed.pathname.match(GITHUB_PR_URL_PATTERN);
-  if (!match) {
-    return false;
-  }
-
-  const [, owner, repo, number] = match;
-  const basePrPath = `/${owner}/${repo}/pull/${number}`;
-  const pathAfterNumber = parsed.pathname.slice(basePrPath.length);
-  return pathAfterNumber === "" || pathAfterNumber === "/";
+  return CONVERSATION_VIEW_PATTERN.test(parsed.pathname);
 }
 
 export function applyPrEvents(events: BackgroundPrEvent[]): PrState {

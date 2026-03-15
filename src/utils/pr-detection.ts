@@ -27,7 +27,12 @@ const MERGED_PATTERNS = [
   /merged this pull request/,
   /merged commit/,
 ];
+const NO_REVIEWS_PATTERN = /no reviews?/;
+const APPROVED_CHANGES_PATTERN = /approved these changes/;
+const REVIEW_COMMENTS_PATTERN = /left review comments?/;
+const AWAITING_REVIEW_PATTERN = /awaiting requested review from/;
 const BOT_SUFFIX_PATTERN = /\[bot\]$/;
+const PR_NUMBER_SUFFIX_PATTERN = /\s*#\d+\s*$/u;
 
 export function normalizeText(raw: string): string {
   return raw.replace(SPACING_PATTERN, " ").trim().toLowerCase();
@@ -42,11 +47,32 @@ export function isBotTimelineItem(item: HTMLElement): boolean {
     return true;
   }
 
-  const labelTexts = Array.from(
-    item.querySelectorAll<HTMLElement>(".Label--secondary, .IssueLabel"),
-    node => normalizeText(node.textContent || ""),
-  );
+  const labelTexts = Array.from(item.querySelectorAll<HTMLElement>(".Label--secondary, .IssueLabel"), node => normalizeText(node.textContent || ""));
   return labelTexts.includes("bot");
+}
+
+function isBotReviewStatusTooltip(reviewersSection: HTMLElement, tooltip: HTMLElement): boolean {
+  const statusAnchorId = tooltip.getAttribute("for");
+  if (!statusAnchorId) {
+    return false;
+  }
+
+  const anchor = reviewersSection.querySelector<HTMLElement>(`#${statusAnchorId}`);
+  if (!anchor) {
+    return false;
+  }
+
+  const reviewerContainer = anchor.closest("p, li, .d-flex, .discussion-sidebar-item");
+  const assigneeName = reviewerContainer
+    ?.querySelector<HTMLElement>("[data-assignee-name]")
+    ?.getAttribute("data-assignee-name");
+
+  if (assigneeName && isBotAccountName(assigneeName)) {
+    return true;
+  }
+
+  const reviewerText = normalizeText(reviewerContainer?.textContent || "");
+  return reviewerText.includes("[bot]");
 }
 
 export function detectEventFromText(text: string): PrEvent | null {
@@ -77,8 +103,119 @@ export function detectEventFromText(text: string): PrEvent | null {
   return null;
 }
 
-export function collectTimelineEvents(doc: Document): PrEvent[] {
-  const timelineItems = [...doc.querySelectorAll<HTMLElement>(".js-timeline-item, .TimelineItem")];
+function getSidebarReviewerStatus(): "has_reviewers" | "no_reviewers" | "unknown" {
+  const reviewersSection = document.querySelector<HTMLElement>(
+    ".discussion-sidebar-item[data-channel-event-name='reviewers_updated'], .discussion-sidebar-item[data-url*='pull_requests%2Fsidebar%2Fshow%2Freviewers']",
+  ) ?? document.querySelector<HTMLElement>("form[aria-label='Select reviewers']")?.closest(".discussion-sidebar-item") as HTMLElement | null;
+
+  if (!reviewersSection) {
+    return "unknown";
+  }
+
+  const hasAwaitingButton = [...reviewersSection.querySelectorAll<HTMLElement>("button[id^='awaiting-review-']")].some((button) => {
+    const reviewerContainer = button.closest("p, li, .d-flex, .discussion-sidebar-item");
+    const assigneeName = reviewerContainer
+      ?.querySelector<HTMLElement>("[data-assignee-name]")
+      ?.getAttribute("data-assignee-name");
+    if (assigneeName && isBotAccountName(assigneeName)) {
+      return false;
+    }
+
+    return !normalizeText(reviewerContainer?.textContent || "").includes("[bot]");
+  });
+  const hasAwaitingTooltip = [...reviewersSection.querySelectorAll<HTMLElement>("tool-tip[for^='awaiting-review-']")].some((tooltip) => {
+    const text = normalizeText(tooltip.textContent || "");
+    return AWAITING_REVIEW_PATTERN.test(text) && !isBotReviewStatusTooltip(reviewersSection, tooltip);
+  });
+
+  if (hasAwaitingButton || hasAwaitingTooltip) {
+    return "has_reviewers";
+  }
+
+  const bodyText = normalizeText(reviewersSection.textContent || "");
+  if (!bodyText) {
+    return "unknown";
+  }
+
+  if (NO_REVIEWS_PATTERN.test(bodyText)) {
+    return "no_reviewers";
+  }
+
+  return "no_reviewers";
+}
+
+function getSidebarApprovalStatus(): "approved" | "not_approved" | "unknown" {
+  const reviewersSection = document.querySelector<HTMLElement>(
+    ".discussion-sidebar-item[data-channel-event-name='reviewers_updated'], .discussion-sidebar-item[data-url*='pull_requests%2Fsidebar%2Fshow%2Freviewers']",
+  ) ?? document.querySelector<HTMLElement>("form[aria-label='Select reviewers']")?.closest(".discussion-sidebar-item") as HTMLElement | null;
+
+  if (!reviewersSection) {
+    return "unknown";
+  }
+
+  const reviewStatusTooltips = [...reviewersSection.querySelectorAll<HTMLElement>("tool-tip[for^='review-status-']")];
+  const approvedTooltips = reviewStatusTooltips.filter((tooltip) => {
+    if (isBotReviewStatusTooltip(reviewersSection, tooltip)) {
+      return false;
+    }
+
+    const text = normalizeText(tooltip.textContent || "");
+    return APPROVED_CHANGES_PATTERN.test(text);
+  });
+  if (approvedTooltips.length > 0) {
+    return "approved";
+  }
+
+  const hasApprovedStatusAnchor = Boolean(
+    reviewersSection.querySelector("a[id^='review-status-'] .octicon-check.color-fg-success"),
+  );
+  if (hasApprovedStatusAnchor) {
+    return "approved";
+  }
+
+  const bodyText = normalizeText(reviewersSection.textContent || "");
+  if (!bodyText) {
+    return "unknown";
+  }
+
+  if (NO_REVIEWS_PATTERN.test(bodyText)) {
+    return "not_approved";
+  }
+
+  if (reviewersSection.querySelector("button[id^='awaiting-review-'], .reviewers-status-icon")) {
+    return "not_approved";
+  }
+
+  return "unknown";
+}
+
+function getSidebarCommentStatus(): "has_comments" | "no_comments" | "unknown" {
+  const reviewersSection = document.querySelector<HTMLElement>(
+    ".discussion-sidebar-item[data-channel-event-name='reviewers_updated'], .discussion-sidebar-item[data-url*='pull_requests%2Fsidebar%2Fshow%2Freviewers']",
+  ) ?? document.querySelector<HTMLElement>("form[aria-label='Select reviewers']")?.closest(".discussion-sidebar-item") as HTMLElement | null;
+
+  if (!reviewersSection) {
+    return "unknown";
+  }
+
+  const commentTooltips = [...reviewersSection.querySelectorAll<HTMLElement>("tool-tip[for^='review-status-']")].filter((tooltip) => {
+    if (isBotReviewStatusTooltip(reviewersSection, tooltip)) {
+      return false;
+    }
+
+    const text = normalizeText(tooltip.textContent || "");
+    return REVIEW_COMMENTS_PATTERN.test(text);
+  });
+
+  if (commentTooltips.length > 0) {
+    return "has_comments";
+  }
+
+  return "no_comments";
+}
+
+export function collectTimelineEvents(): PrEvent[] {
+  const timelineItems = [...document.querySelectorAll<HTMLElement>(".js-timeline-item, .TimelineItem")];
 
   const events: PrEvent[] = [];
 
@@ -99,4 +236,23 @@ export function collectTimelineEvents(doc: Document): PrEvent[] {
   }
 
   return events;
+}
+
+export function getPrTitle(): string | null {
+  const titleNode = document.querySelector<HTMLElement>("bdi.js-issue-title, h1 .markdown-title");
+  const titleText = titleNode?.textContent?.trim();
+  if (titleText) {
+    return titleText;
+  }
+
+  const docTitle = document.title.replace(PR_NUMBER_SUFFIX_PATTERN, "").trim();
+  return docTitle || null;
+}
+
+export function getSidebarReviewStatuses() {
+  return {
+    reviewerStatus: getSidebarReviewerStatus(),
+    approvalStatus: getSidebarApprovalStatus(),
+    commentStatus: getSidebarCommentStatus(),
+  };
 }

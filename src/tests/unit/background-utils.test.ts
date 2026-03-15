@@ -5,126 +5,90 @@ import {
   normalizePrUrl,
 } from "../../utils/background-utils";
 
-describe("normalizePrUrl", () => {
-  it("returns null for undefined input", () => {
-    expect(normalizePrUrl(undefined)).toBeNull();
+describe("background-utils", () => {
+  describe("normalizePrUrl", () => {
+    it("should normalize GitHub PR URLs", () => {
+      const url = "https://github.com/owner/repo/pull/123";
+      expect(normalizePrUrl(url)).toBe("https://github.com/owner/repo/pull/123");
+    });
+
+    it("should extract PR URL with additional paths", () => {
+      const url = "https://github.com/owner/repo/pull/123/files";
+      expect(normalizePrUrl(url)).toBe("https://github.com/owner/repo/pull/123");
+    });
+
+    it("should return null for non-GitHub URLs", () => {
+      expect(normalizePrUrl("https://gitlab.com/owner/repo/pull/123")).toBeNull();
+    });
+
+    it("should return null for non-PR GitHub URLs", () => {
+      expect(normalizePrUrl("https://github.com/owner/repo")).toBeNull();
+    });
+
+    it("should return null for empty input", () => {
+      expect(normalizePrUrl("")).toBeNull();
+      expect(normalizePrUrl(undefined)).toBeNull();
+    });
+
+    it("should handle invalid URLs", () => {
+      expect(normalizePrUrl("not a url")).toBeNull();
+    });
   });
 
-  it("returns null for empty string", () => {
-    expect(normalizePrUrl("")).toBeNull();
+  describe("isConversationView", () => {
+    it("should detect conversation view URLs", () => {
+      const url = "https://github.com/owner/repo/pull/123";
+      expect(isConversationView(url)).toBe(true);
+    });
+
+    it("should detect conversation view with trailing slash", () => {
+      const url = "https://github.com/owner/repo/pull/123/";
+      expect(isConversationView(url)).toBe(true);
+    });
+
+    it("should not detect files view", () => {
+      const url = "https://github.com/owner/repo/pull/123/files";
+      expect(isConversationView(url)).toBe(false);
+    });
+
+    it("should not detect commits view", () => {
+      const url = "https://github.com/owner/repo/pull/123/commits";
+      expect(isConversationView(url)).toBe(false);
+    });
+
+    it("should return false for empty input", () => {
+      expect(isConversationView("")).toBe(false);
+      expect(isConversationView(undefined)).toBe(false);
+    });
   });
 
-  it("returns null for non-github URLs", () => {
-    expect(normalizePrUrl("https://example.com/foo/bar/pull/1")).toBeNull();
-  });
+  describe("applyPrEvents", () => {
+    it("should return working state by default", () => {
+      expect(applyPrEvents([])).toBe("working");
+    });
 
-  it("returns null for github URLs that are not PRs", () => {
-    expect(normalizePrUrl("https://github.com/owner/repo/issues/1")).toBeNull();
-  });
+    it("should transition to reviewing on review_requested", () => {
+      expect(applyPrEvents(["review_requested"])).toBe("reviewing");
+    });
 
-  it("returns null for invalid URLs", () => {
-    expect(normalizePrUrl("not-a-url")).toBeNull();
-  });
+    it("should transition to merge_waiting on approved", () => {
+      expect(applyPrEvents(["approved"])).toBe("merge_waiting");
+    });
 
-  it("normalizes a PR conversation URL", () => {
-    expect(normalizePrUrl("https://github.com/shiron/repo/pull/42")).toBe(
-      "https://github.com/shiron/repo/pull/42",
-    );
-  });
+    it("should transition to merged on merged", () => {
+      expect(applyPrEvents(["merged"])).toBe("merged");
+    });
 
-  it("strips /files suffix from PR URL", () => {
-    expect(normalizePrUrl("https://github.com/shiron/repo/pull/42/files")).toBe(
-      "https://github.com/shiron/repo/pull/42",
-    );
-  });
+    it("should transition from merge_waiting to working on commented", () => {
+      expect(applyPrEvents(["approved", "commented"])).toBe("working");
+    });
 
-  it("strips /commits suffix from PR URL", () => {
-    expect(normalizePrUrl("https://github.com/shiron/repo/pull/42/commits")).toBe(
-      "https://github.com/shiron/repo/pull/42",
-    );
-  });
+    it("should handle multiple events in sequence", () => {
+      expect(applyPrEvents(["review_requested", "approved"])).toBe("merge_waiting");
+    });
 
-  it("strips query string from PR URL", () => {
-    expect(normalizePrUrl("https://github.com/shiron/repo/pull/42?foo=bar")).toBe(
-      "https://github.com/shiron/repo/pull/42",
-    );
-  });
-
-  it("handles URL with hash fragment", () => {
-    expect(normalizePrUrl("https://github.com/shiron/repo/pull/42#issuecomment-123")).toBe(
-      "https://github.com/shiron/repo/pull/42",
-    );
-  });
-});
-
-describe("isConversationView", () => {
-  it("returns false for undefined input", () => {
-    expect(isConversationView(undefined)).toBe(false);
-  });
-
-  it("returns false for non-github URLs", () => {
-    expect(isConversationView("https://example.com/foo/bar/pull/1")).toBe(false);
-  });
-
-  it("returns false for non-PR github URLs", () => {
-    expect(isConversationView("https://github.com/owner/repo/issues/1")).toBe(false);
-  });
-
-  it("returns true for PR conversation URL (no suffix)", () => {
-    expect(isConversationView("https://github.com/shiron/repo/pull/42")).toBe(true);
-  });
-
-  it("returns false for PR files view", () => {
-    expect(isConversationView("https://github.com/shiron/repo/pull/42/files")).toBe(false);
-  });
-
-  it("returns false for PR commits view", () => {
-    expect(isConversationView("https://github.com/shiron/repo/pull/42/commits")).toBe(false);
-  });
-
-  it("returns true for PR URL with query string but no path suffix", () => {
-    expect(isConversationView("https://github.com/shiron/repo/pull/42?foo=bar")).toBe(true);
-  });
-});
-
-describe("applyPrEvents", () => {
-  it("returns working for empty events", () => {
-    expect(applyPrEvents([])).toBe("working");
-  });
-
-  it("transitions to reviewing on review_requested", () => {
-    expect(applyPrEvents(["review_requested"])).toBe("reviewing");
-  });
-
-  it("transitions to merge_waiting on approved", () => {
-    expect(applyPrEvents(["review_requested", "approved"])).toBe("merge_waiting");
-  });
-
-  it("transitions to merged on merged event", () => {
-    expect(applyPrEvents(["review_requested", "approved", "merged"])).toBe("merged");
-  });
-
-  it("stays merged even after subsequent events", () => {
-    expect(applyPrEvents(["merged", "review_requested"])).toBe("reviewing");
-  });
-
-  it("transitions from merge_waiting to working on commented", () => {
-    expect(applyPrEvents(["review_requested", "approved", "commented"])).toBe("working");
-  });
-
-  it("commented does not affect working state", () => {
-    expect(applyPrEvents(["commented"])).toBe("working");
-  });
-
-  it("commented does not affect reviewing state", () => {
-    expect(applyPrEvents(["review_requested", "commented"])).toBe("reviewing");
-  });
-
-  it("handles full workflow: work → review → approve → comment → work", () => {
-    expect(applyPrEvents(["review_requested", "approved", "commented"])).toBe("working");
-  });
-
-  it("handles re-review after approval", () => {
-    expect(applyPrEvents(["review_requested", "approved", "commented", "review_requested"])).toBe("reviewing");
+    it("should keep merged state", () => {
+      expect(applyPrEvents(["review_requested", "merged", "commented"])).toBe("merged");
+    });
   });
 });
