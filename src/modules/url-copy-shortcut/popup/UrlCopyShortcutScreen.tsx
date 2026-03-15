@@ -1,9 +1,5 @@
-const baseCardStyle = {
-  border: "1px solid #d1d5db",
-  borderRadius: 10,
-  padding: 12,
-  background: "#ffffff",
-} as const;
+import { BackButton } from "../../../popup/BackButton";
+import { baseCardStyle } from "../../../popup/styles";
 
 export default function UrlCopyShortcutScreen({
   enabled = true,
@@ -17,22 +13,7 @@ export default function UrlCopyShortcutScreen({
   return (
     <main style={{ padding: 16, fontFamily: "'Helvetica Neue', Arial, sans-serif", color: "#111827" }}>
       <div style={{ display: "flex", alignItems: "center", marginBottom: 12, gap: 8 }}>
-        <button
-          type="button"
-          onClick={onBack}
-          style={{
-            background: "none",
-            border: "none",
-            padding: 0,
-            cursor: "pointer",
-            fontSize: 14,
-            color: "#374151",
-            display: "flex",
-            alignItems: "center",
-          }}
-        >
-          ←
-        </button>
+        <BackButton onClick={onBack} />
         <h1 style={{ fontSize: 18, margin: 0 }}>URL Copy Shortcut</h1>
       </div>
 

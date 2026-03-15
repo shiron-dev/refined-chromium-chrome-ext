@@ -1,21 +1,5 @@
 import type { BackgroundMessageHandler, CommandHandler } from "../../core/types";
-
-interface BrowserTab {
-  id?: number
-  url?: string
-  windowId?: number
-}
-
-const extensionApi = (globalThis as unknown as { chrome?: any }).chrome;
-
-async function getCurrentActiveTab(): Promise<BrowserTab | null> {
-  if (!extensionApi?.tabs) {
-    return null;
-  }
-
-  const tabs = await extensionApi.tabs.query({ active: true, currentWindow: true });
-  return tabs[0] ?? null;
-}
+import { extensionApi, getCurrentActiveTab } from "../../utils/extension-api";
 
 export const backgroundHandlers: Record<string, BackgroundMessageHandler> = {
   copy: async () => {

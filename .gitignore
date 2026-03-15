@@ -3,6 +3,7 @@
 
 # React Router
 /.react-router/
+/typecheck/
 /build/
 /extensions/
 /sample/

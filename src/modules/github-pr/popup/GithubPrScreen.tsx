@@ -1,5 +1,8 @@
+import type { UiStatus } from "../../../popup/styles";
 import type { PopupStateResponse, RegisterResponse, ReloadTrackedPrsResponse, TrackedPrItem, UntrackResponse } from "./types";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { BackButton } from "../../../popup/BackButton";
+import { baseCardStyle, getStatusColor } from "../../../popup/styles";
 
 const extensionApi = (globalThis as { chrome?: { runtime?: { sendMessage: (msg: unknown) => Promise<any> } } }).chrome;
 
@@ -64,18 +67,6 @@ async function activatePrTab(prUrl: string): Promise<{ ok: boolean }> {
 
   return extensionApi.runtime.sendMessage({ moduleId: "githubPr", action: "activatePrTab", payload: { prUrl } }) as Promise<{ ok: boolean }>;
 }
-
-interface UiStatus {
-  tone: "neutral" | "success" | "warn"
-  message: string
-}
-
-const baseCardStyle = {
-  border: "1px solid #d1d5db",
-  borderRadius: 10,
-  padding: 12,
-  background: "#ffffff",
-} as const;
 
 const GITHUB_PR_PATH_PATTERN = /^\/([^/]+)\/([^/]+)\/pull\/(\d+)/;
 const PR_STATE_ORDER: Record<TrackedPrItem["state"], number> = {
@@ -191,17 +182,7 @@ export default function GithubPrScreen({ onBack }: { onBack: () => void }) {
     });
   }, []);
 
-  const statusColor = useMemo(() => {
-    if (status.tone === "success") {
-      return "#166534";
-    }
-
-    if (status.tone === "warn") {
-      return "#b45309";
-    }
-
-    return "#1f2937";
-  }, [status.tone]);
+  const statusColor = useMemo(() => getStatusColor(status.tone), [status.tone]);
 
   const stateLabelByKey: Record<TrackedPrItem["state"], string> = {
     working: "PR作業/確認中",
@@ -242,22 +223,7 @@ export default function GithubPrScreen({ onBack }: { onBack: () => void }) {
   return (
     <main style={{ padding: 16, fontFamily: "'Helvetica Neue', Arial, sans-serif", color: "#111827" }}>
       <div style={{ display: "flex", alignItems: "center", marginBottom: 12, gap: 8 }}>
-        <button
-          type="button"
-          onClick={onBack}
-          style={{
-            background: "none",
-            border: "none",
-            padding: 0,
-            cursor: "pointer",
-            fontSize: 14,
-            color: "#374151",
-            display: "flex",
-            alignItems: "center",
-          }}
-        >
-          ←
-        </button>
+        <BackButton onClick={onBack} />
         <h1 style={{ fontSize: 18, margin: 0 }}>GitHub PR Manager</h1>
       </div>
 

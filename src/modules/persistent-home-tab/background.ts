@@ -1,6 +1,8 @@
 import type { BackgroundMessageHandler, TabRemovedHandler } from "../../core/types";
+import type { BrowserTab } from "../../utils/extension-api";
 import type { HomeTabStateResponse, PersistentHomeTabItem, RegisterCurrentHomeTabResponse, UnregisterHomeTabResponse } from "./popup/types";
 import { createModuleStorage } from "../../core/storage";
+import { extensionApi, getCurrentActiveTab } from "../../utils/extension-api";
 
 interface PersistentHomeTabEntry {
   id: string
@@ -13,19 +15,7 @@ interface PersistentHomeTabEntry {
   updatedAt: number
 }
 
-interface BrowserTab {
-  id?: number
-  url?: string
-  windowId?: number
-  title?: string
-  index?: number
-  groupId?: number
-  active?: boolean
-  lastAccessed?: number
-}
-
 const storage = createModuleStorage("persistentHomeTab");
-const extensionApi = (globalThis as unknown as { chrome?: any }).chrome;
 
 function createPersistentHomeTabId(): string {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
@@ -211,15 +201,6 @@ async function getResolvedWindowId(preferredWindowId: number): Promise<number | 
   }
 
   return getLastNormalWindowId();
-}
-
-async function getCurrentActiveTab(): Promise<BrowserTab | null> {
-  if (!extensionApi?.tabs) {
-    return null;
-  }
-
-  const tabs = await extensionApi.tabs.query({ active: true, currentWindow: true });
-  return tabs[0] ?? null;
 }
 
 async function restorePersistentHomeTab(entry: PersistentHomeTabEntry): Promise<void> {
