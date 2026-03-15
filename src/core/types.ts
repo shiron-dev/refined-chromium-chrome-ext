@@ -40,6 +40,11 @@ export interface TabRemovedHandler {
   ) => void | Promise<void>
 }
 
+/** Tab activated handler */
+export interface TabActivatedHandler {
+  handler: (activeInfo: { tabId: number; windowId: number }) => void | Promise<void>
+}
+
 /** Card displayed on Home screen */
 export interface PopupCard {
   id: string
@@ -64,4 +69,5 @@ export interface ModuleManifest {
   commandHandlers?: CommandHandler[]
   navigationHandlers?: NavigationHandler[]
   tabRemovedHandlers?: TabRemovedHandler[]
+  tabActivatedHandlers?: TabActivatedHandler[]
 }

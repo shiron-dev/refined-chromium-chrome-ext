@@ -77,4 +77,17 @@ export default defineBackground(() => {
       }
     }
   });
+
+  chrome.tabs.onActivated?.addListener((activeInfo) => {
+    for (const manifest of registry.getAll()) {
+      for (const { handler } of manifest.tabActivatedHandlers ?? []) {
+        const result = handler(activeInfo);
+        if (result instanceof Promise) {
+          result.catch((error: unknown) => {
+            console.error("Failed to handle tab activated:", error);
+          });
+        }
+      }
+    }
+  });
 });
