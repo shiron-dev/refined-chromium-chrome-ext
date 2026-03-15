@@ -116,5 +116,11 @@ jobs:
       - uses: shiron-dev/actions/setup-node@0cc65c3143f6a0d119fa8085c8b2ae3dd25e657b # v1.6.3
       - name: Install dependencies
         run: pnpm install
-      - name: Run test
-        run: pnpm test
+      - name: Run test with coverage
+        run: pnpm test:coverage
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./coverage/lcov.info
+          fail_ci_if_error: true
