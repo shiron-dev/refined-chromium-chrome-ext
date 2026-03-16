@@ -14,8 +14,8 @@ describe("基本一致 / 完全一致", () => {
   });
 
   it("完全一致スコアは前方一致・末尾一致より高い", () => {
-    const exact = fuzzyScore("apple", "apple")!;    // exact
-    const prefix = fuzzyScore("apple", "applet")!;  // "apple" is prefix of "applet"
+    const exact = fuzzyScore("apple", "apple")!; // exact
+    const prefix = fuzzyScore("apple", "applet")!; // "apple" is prefix of "applet"
     const suffix = fuzzyScore("apple", "pineapple")!; // "apple" is suffix of "pineapple"
     expect(exact).toBeGreaterThan(prefix);
     expect(exact).toBeGreaterThan(suffix);
@@ -137,7 +137,7 @@ describe("大文字小文字 / case insensitive (デフォルト)", () => {
 });
 
 describe("大文字小文字 / case sensitive モード", () => {
-  it("APIClient は caseSensitive:true で API クエリにヒット", () => {
+  it("caseSensitive:true で API クエリは APIClient にヒットする", () => {
     expect(
       fuzzyScore("API", "APIClient", { caseSensitive: true }),
     ).not.toBeNull();
@@ -176,18 +176,18 @@ describe("空文字・null 系", () => {
   });
 
   it("candidate が null はnullを返す", () => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    expect(fuzzyScore("app", null as any)).toBeNull();
+    // biome-ignore lint: intentional runtime null test
+    expect(fuzzyScore("app", null as never)).toBeNull();
   });
 
   it("candidate が undefined はnullを返す", () => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    expect(fuzzyScore("app", undefined as any)).toBeNull();
+    // biome-ignore lint: intentional runtime undefined test
+    expect(fuzzyScore("app", undefined as never)).toBeNull();
   });
 
   it("query が null はスコア0を返す", () => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    expect(fuzzyScore(null as any, "apple")).toBe(0);
+    // biome-ignore lint: intentional runtime null test
+    expect(fuzzyScore(null as never, "apple")).toBe(0);
   });
 
   it("candidates が空配列なら0件", () => {

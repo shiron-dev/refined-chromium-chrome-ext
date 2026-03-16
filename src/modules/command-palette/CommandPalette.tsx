@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { fuzzyScore } from "./fuzzy";
 
+const RE_WHITESPACE = /\s+/;
+
 interface TabInfo {
   id: number
   title: string
@@ -32,10 +34,11 @@ export function CommandPalette({ onClose }: Props) {
   }, []);
 
   const filtered = useMemo(() => {
-    const tokens = query.trim().split(/\s+/).filter(Boolean);
-    if (tokens.length === 0) return tabs;
+    const tokens = query.trim().split(RE_WHITESPACE).filter(Boolean);
+    if (tokens.length === 0)
+      return tabs;
 
-    const scored: Array<{ tab: TabInfo; score: number }> = [];
+    const scored: Array<{ tab: TabInfo, score: number }> = [];
     for (const tab of tabs) {
       let totalScore = 0;
       let allMatch = true;
@@ -44,11 +47,15 @@ export function CommandPalette({ onClose }: Props) {
         const titleScore = fuzzyScore(token, tab.title);
         const urlScore = fuzzyScore(token, tab.url);
         const best = Math.max(titleScore ?? -Infinity, urlScore ?? -Infinity);
-        if (!isFinite(best)) { allMatch = false; break; }
+        if (!Number.isFinite(best)) {
+          allMatch = false;
+          break;
+        }
         totalScore += best;
       }
 
-      if (allMatch) scored.push({ tab, score: totalScore });
+      if (allMatch)
+        scored.push({ tab, score: totalScore });
     }
     return scored.sort((a, b) => b.score - a.score).map(e => e.tab);
   }, [tabs, query]);
