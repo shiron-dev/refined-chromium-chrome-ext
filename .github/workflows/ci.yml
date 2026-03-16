@@ -46,6 +46,7 @@ jobs:
       - ts-check
       - build
       - test
+      - e2e
     if: ${{ always() }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
@@ -150,4 +151,33 @@ jobs:
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./coverage/lcov.info
+          flags: unit
+          fail_ci_if_error: true
+
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      - uses: shiron-dev/actions/setup-node@0cc65c3143f6a0d119fa8085c8b2ae3dd25e657b # v1.6.3
+      - name: Install dependencies
+        run: pnpm install
+      - name: Install Playwright browsers
+        run: pnpm playwright install chromium --with-deps
+      - name: Build extension with coverage instrumentation
+        run: pnpm build
+        env:
+          E2E_COVERAGE: "true"
+      - name: Run E2E tests
+        run: pnpm test:e2e
+        env:
+          E2E_COVERAGE: "true"
+      - name: Generate E2E coverage report
+        run: pnpm exec nyc report
+      - name: Upload E2E coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./coverage/e2e/coverage/lcov.info
+          flags: e2e
           fail_ci_if_error: true

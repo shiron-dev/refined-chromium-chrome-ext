@@ -1,10 +1,22 @@
 import { defineConfig } from "wxt";
+import istanbul from "vite-plugin-istanbul";
 
 export default defineConfig({
   root: import.meta.dirname,
   srcDir: ".",
   entrypointsDir: "entrypoints",
   modules: ["@wxt-dev/module-react"],
+  vite: () => ({
+    plugins: process.env.E2E_COVERAGE === "true" ? [
+      istanbul({
+        include: ["entrypoints/**/*", "src/**/*"],
+        exclude: ["node_modules/**", "e2e/**", "src/tests/**"],
+        extension: [".ts", ".tsx"],
+        requireEnv: false,
+        forceBuildInstrument: true,
+      }),
+    ] : [],
+  }),
   dev: {
     server: {
       host: "127.0.0.1",

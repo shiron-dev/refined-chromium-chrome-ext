@@ -1,0 +1,7 @@
+{
+  "include": ["entrypoints/**", "src/**"],
+  "exclude": ["src/tests/**", "e2e/**"],
+  "reporter": ["lcov", "text-summary"],
+  "report-dir": "coverage/e2e/coverage",
+  "temp-dir": ".nyc_output"
+}
