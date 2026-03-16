@@ -31,8 +31,16 @@ export function CommandPalette({ onClose }: Props) {
   }, []);
 
   const filtered = tabs.filter((tab) => {
-    const q = query.toLowerCase();
-    return tab.title.toLowerCase().includes(q) || tab.url.toLowerCase().includes(q);
+    const tokens = query.toLowerCase().split(/\s+/).filter(Boolean);
+    if (tokens.length === 0) return true;
+
+    const titleWords = tab.title.toLowerCase().split(/\s+/);
+    const urlWords = tab.url.toLowerCase().split(/[/\s]+/);
+    const allWords = [...titleWords, ...urlWords];
+
+    return tokens.every(token =>
+      allWords.some(word => word.startsWith(token))
+    );
   });
 
   useEffect(() => {
