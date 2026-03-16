@@ -1,4 +1,7 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { fuzzyScore } from "./fuzzy";
+
+const RE_WHITESPACE = /\s+/;
 
 interface TabInfo {
   id: number
@@ -30,10 +33,32 @@ export function CommandPalette({ onClose }: Props) {
     inputRef.current?.focus();
   }, []);
 
-  const filtered = tabs.filter((tab) => {
-    const q = query.toLowerCase();
-    return tab.title.toLowerCase().includes(q) || tab.url.toLowerCase().includes(q);
-  });
+  const filtered = useMemo(() => {
+    const tokens = query.trim().split(RE_WHITESPACE).filter(Boolean);
+    if (tokens.length === 0)
+      return tabs;
+
+    const scored: Array<{ tab: TabInfo, score: number }> = [];
+    for (const tab of tabs) {
+      let totalScore = 0;
+      let allMatch = true;
+
+      for (const token of tokens) {
+        const titleScore = fuzzyScore(token, tab.title);
+        const urlScore = fuzzyScore(token, tab.url);
+        const best = Math.max(titleScore ?? -Infinity, urlScore ?? -Infinity);
+        if (!Number.isFinite(best)) {
+          allMatch = false;
+          break;
+        }
+        totalScore += best;
+      }
+
+      if (allMatch)
+        scored.push({ tab, score: totalScore });
+    }
+    return scored.sort((a, b) => b.score - a.score).map(e => e.tab);
+  }, [tabs, query]);
 
   useEffect(() => {
     setSelectedIndex(0);
