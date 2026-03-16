@@ -21,37 +21,15 @@ function isReloadableUrl(url: string | undefined): boolean {
 }
 
 async function checkTabIsHealthy(tabId: number): Promise<boolean> {
-  if (!extensionApi?.scripting) {
-    return false;
-  }
-
   try {
-    const results = await extensionApi.scripting.executeScript({
-      target: { tabId },
-      func: () => {
-        // Detect property-based beforeunload handler
-        if (window.onbeforeunload !== null && window.onbeforeunload !== undefined) {
-          return false;
-        }
-
-        // Detect form fields with unsaved (dirty) values
-        const inputs = document.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>(
-          "input:not([type='hidden']):not([type='submit']):not([type='button']):not([type='reset']):not([type='checkbox']):not([type='radio']), textarea",
-        );
-        for (const input of Array.from(inputs)) {
-          if (input.value !== input.defaultValue) {
-            return false;
-          }
-        }
-
-        return true;
-      },
+    const response = await extensionApi.tabs.sendMessage(tabId, {
+      moduleId: "bulkTabReload",
+      action: "isHealthy",
     });
-
-    return results?.[0]?.result === true;
+    return (response as { healthy?: boolean } | undefined)?.healthy === true;
   }
   catch {
-    // Tab is restricted (chrome://, chrome-extension://, etc.) – skip
+    // Content script not reachable (tab still loading, restricted URL, etc.) – skip
     return false;
   }
 }

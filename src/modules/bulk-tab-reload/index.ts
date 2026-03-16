@@ -1,5 +1,6 @@
 import type { ModuleManifest } from "../../core/types";
 import { backgroundHandlers } from "./background";
+import { contentHandlers, contentInit } from "./content";
 import BulkTabReloadScreen from "./popup/BulkTabReloadScreen";
 
 const manifest: ModuleManifest = {
@@ -16,6 +17,8 @@ const manifest: ModuleManifest = {
     },
   ],
   backgroundHandlers,
+  contentHandlers,
+  contentInit,
 };
 
 export default manifest;
