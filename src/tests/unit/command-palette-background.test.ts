@@ -88,7 +88,7 @@ describe("backgroundHandlers.switchTab", () => {
 });
 
 describe("commandHandlers (open-command-palette)", () => {
-  const handler = commandHandlers.find((h) => h.command === "open-command-palette")!;
+  const handler = commandHandlers.find(h => h.command === "open-command-palette")!;
 
   it("アクティブタブにopenメッセージを送信する", async () => {
     chromeMock.tabs.query.mockResolvedValue([{ id: 10 }]);

@@ -6,9 +6,9 @@ export default function CommandPaletteScreen({
   onBack,
   onToggle = () => {},
 }: {
-  enabled?: boolean;
-  onBack: () => void;
-  onToggle?: (enabled: boolean) => void;
+  enabled?: boolean
+  onBack: () => void
+  onToggle?: (enabled: boolean) => void
 }) {
   return (
     <main style={{ padding: 16, fontFamily: "'Helvetica Neue', Arial, sans-serif" }}>
@@ -19,7 +19,15 @@ export default function CommandPaletteScreen({
 
       <section style={{ ...baseCardStyle, marginBottom: 12 }}>
         <p style={{ margin: "0 0 8px", fontSize: 13, color: "#374151" }}>
-          ページ上で <strong>⌘K</strong> (Mac) / <strong>Ctrl+K</strong> (Windows/Linux)
+          ページ上で
+          {" "}
+          <strong>⌘K</strong>
+          {" "}
+          (Mac) /
+          {" "}
+          <strong>Ctrl+K</strong>
+          {" "}
+          (Windows/Linux)
           を押すとCommand Paletteが開きます。
         </p>
         <p style={{ margin: "0 0 12px", fontSize: 13, color: "#374151" }}>

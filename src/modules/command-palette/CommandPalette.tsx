@@ -1,16 +1,16 @@
 import { useEffect, useRef, useState } from "react";
 
-type TabInfo = {
-  id: number;
-  title: string;
-  url: string;
-  favIconUrl?: string;
-  windowId: number;
-};
+interface TabInfo {
+  id: number
+  title: string
+  url: string
+  favIconUrl?: string
+  windowId: number
+}
 
-type Props = {
-  onClose: () => void;
-};
+interface Props {
+  onClose: () => void
+}
 
 export function CommandPalette({ onClose }: Props) {
   const [query, setQuery] = useState("");
@@ -58,14 +58,18 @@ export function CommandPalette({ onClose }: Props) {
   function handleKeyDown(e: React.KeyboardEvent) {
     if (e.key === "ArrowDown") {
       e.preventDefault();
-      setSelectedIndex((i) => Math.min(i + 1, filtered.length - 1));
-    } else if (e.key === "ArrowUp") {
+      setSelectedIndex(i => Math.min(i + 1, filtered.length - 1));
+    }
+    else if (e.key === "ArrowUp") {
       e.preventDefault();
-      setSelectedIndex((i) => Math.max(i - 1, 0));
-    } else if (e.key === "Enter") {
+      setSelectedIndex(i => Math.max(i - 1, 0));
+    }
+    else if (e.key === "Enter") {
       const tab = filtered[selectedIndex];
-      if (tab) switchTab(tab);
-    } else if (e.key === "Escape") {
+      if (tab)
+        switchTab(tab);
+    }
+    else if (e.key === "Escape") {
       onClose();
     }
   }
@@ -94,7 +98,7 @@ export function CommandPalette({ onClose }: Props) {
           overflow: "hidden",
           fontFamily: "'Helvetica Neue', Arial, sans-serif",
         }}
-        onClick={(e) => e.stopPropagation()}
+        onClick={e => e.stopPropagation()}
       >
         {/* Search input */}
         <div
@@ -112,7 +116,7 @@ export function CommandPalette({ onClose }: Props) {
             type="text"
             placeholder="タブを検索..."
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={e => setQuery(e.target.value)}
             onKeyDown={handleKeyDown}
             style={{
               flex: 1,
@@ -175,17 +179,19 @@ export function CommandPalette({ onClose }: Props) {
               }}
               onMouseEnter={() => setSelectedIndex(i)}
             >
-              {tab.favIconUrl ? (
-                <img
-                  src={tab.favIconUrl}
-                  alt=""
-                  width={16}
-                  height={16}
-                  style={{ flexShrink: 0, borderRadius: 2 }}
-                />
-              ) : (
-                <span style={{ width: 16, height: 16, flexShrink: 0 }}>🌐</span>
-              )}
+              {tab.favIconUrl
+                ? (
+                    <img
+                      src={tab.favIconUrl}
+                      alt=""
+                      width={16}
+                      height={16}
+                      style={{ flexShrink: 0, borderRadius: 2 }}
+                    />
+                  )
+                : (
+                    <span style={{ width: 16, height: 16, flexShrink: 0 }}>🌐</span>
+                  )}
               <div style={{ overflow: "hidden" }}>
                 <div
                   style={{
