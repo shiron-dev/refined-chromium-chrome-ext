@@ -12,3 +12,7 @@
 /.wxt/
 /.output/
 /dev/
+package-lock.json
+
+# Test coverage
+/coverage/
