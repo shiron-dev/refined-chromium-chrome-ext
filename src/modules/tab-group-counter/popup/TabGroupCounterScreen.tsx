@@ -72,6 +72,10 @@ export default function TabGroupCounterScreen({
 
   useEffect(() => {
     reload().catch((error: unknown) => console.error(error));
+    const interval = setInterval(() => {
+      reload().catch((error: unknown) => console.error(error));
+    }, 1000);
+    return () => { clearInterval(interval); };
   }, [reload]);
 
   const handleSaveFormat = useCallback(async () => {
