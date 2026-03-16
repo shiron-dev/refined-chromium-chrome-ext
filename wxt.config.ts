@@ -24,6 +24,13 @@ export default defineConfig({
       128: "icon128.png",
     },
     commands: {
+      "open-command-palette": {
+        suggested_key: {
+          default: "Ctrl+K",
+          mac: "Command+K",
+        },
+        description: "Open command palette",
+      },
       "register-current-pr": {
         suggested_key: {
           default: "Ctrl+Shift+P",
