@@ -66,6 +66,8 @@ export interface ModuleManifest {
   popupCards: PopupCard[]
   backgroundHandlers?: Record<string, BackgroundMessageHandler>
   contentHandlers?: Record<string, ContentMessageHandler>
+  /** Called once when the content script loads on a page */
+  contentInit?: () => void
   commandHandlers?: CommandHandler[]
   navigationHandlers?: NavigationHandler[]
   tabActivatedHandlers?: TabActivatedHandler[]

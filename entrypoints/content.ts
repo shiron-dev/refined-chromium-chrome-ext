@@ -16,6 +16,10 @@ export default defineContentScript({
   matches: ["http://*/*", "https://*/*"],
   runAt: "document_end",
   main() {
+    for (const manifest of registry.getAll()) {
+      manifest.contentInit?.();
+    }
+
     chrome.runtime.onMessage?.addListener((message, _sender, sendResponse) => {
       const msg = message as Partial<ModuleMessage>;
       if (!msg.moduleId || !msg.action) {
