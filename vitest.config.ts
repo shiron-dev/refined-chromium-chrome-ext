@@ -1,12 +1,17 @@
 import { defineConfig } from "vitest/config";
-import { WxtVitest } from "wxt/testing/vitest-plugin";
 
 export default defineConfig({
-  plugins: [WxtVitest()],
+  resolve: {
+    alias: [
+      // wxt.config.ts の paths: "~/*" -> "./app/*" を再現
+      { find: /^~\/(.*)/, replacement: "/home/user/refined-chromium-chrome-ext/app/$1" },
+    ],
+  },
   test: {
     environment: "jsdom",
     pool: "forks",
     isolate: false,
+    setupFiles: ["src/tests/setup.ts"],
     include: ["src/tests/**/*.test.ts"],
     exclude: ["node_modules", "e2e"],
     coverage: {
