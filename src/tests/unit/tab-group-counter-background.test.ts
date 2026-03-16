@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fakeBrowser } from "wxt/testing/fake-browser";
+import { backgroundHandlers, DEFAULT_FORMAT } from "../../modules/tab-group-counter/background";
 
 // vi.hoisted で mock オブジェクトを定義して vi.mock 内で参照できるようにする
 const { mockExtensionApi } = vi.hoisted(() => {
@@ -23,14 +24,12 @@ const { mockExtensionApi } = vi.hoisted(() => {
   return { mockExtensionApi };
 });
 
+// vi.mock は vitest によって自動的にホイストされるため、
+// background.ts のイベントリスナー登録・IIFE 実行より前に適用される
 vi.mock("../../utils/extension-api", () => ({
   extensionApi: mockExtensionApi,
   getCurrentActiveTab: vi.fn(),
 }));
-
-// background.ts はモジュールロード時にイベントリスナーを登録し IIFE を実行するため、
-// mock 設定後にインポートする
-import { DEFAULT_FORMAT, backgroundHandlers } from "../../modules/tab-group-counter/background";
 
 // テストで使いやすい型付きアクセス
 const handlers = backgroundHandlers as Record<string, (payload?: unknown) => Promise<unknown>>;
@@ -54,8 +53,8 @@ describe("tab-group-counter/background", () => {
 
   // ─── DEFAULT_FORMAT ──────────────────────────────────────────────────────────
 
-  describe("DEFAULT_FORMAT", () => {
-    it('should be "{name} ({count})"', () => {
+  describe("default format constant", () => {
+    it("should be \"{name} ({count})\"", () => {
       expect(DEFAULT_FORMAT).toBe("{name} ({count})");
     });
   });
@@ -129,7 +128,7 @@ describe("tab-group-counter/background", () => {
     it("should not call update when formatted title is already correct", async () => {
       // originalTitles already stored, formatted title matches
       await chrome.storage.local.set({
-        "modules.tabGroupCounter.originalTitles": { "1": "Work" },
+        "modules.tabGroupCounter.originalTitles": { 1: "Work" },
       });
       mockExtensionApi.tabGroups.query.mockResolvedValue([
         { id: 1, title: "Work (2)", color: "blue", windowId: 1 },
@@ -173,7 +172,7 @@ describe("tab-group-counter/background", () => {
       mockExtensionApi.tabGroups.query.mockResolvedValue([
         { id: 1, title: "Work (5)", color: "blue", windowId: 1 },
       ]);
-      mockExtensionApi.tabs.query.mockResolvedValue(Array.from({ length: 5 }, () => ({ groupId: 1 })));
+      mockExtensionApi.tabs.query.mockResolvedValue(Array.from({ length: 5 }).fill({ groupId: 1 }));
 
       const result = await handlers.getGroups() as { groups: Array<{ title: string }> };
 
@@ -182,7 +181,7 @@ describe("tab-group-counter/background", () => {
 
     it("should prefer stored original title over extraction", async () => {
       await chrome.storage.local.set({
-        "modules.tabGroupCounter.originalTitles": { "1": "My Work" },
+        "modules.tabGroupCounter.originalTitles": { 1: "My Work" },
       });
       mockExtensionApi.tabGroups.query.mockResolvedValue([
         { id: 1, title: "My Work (3)", color: "blue", windowId: 1 },
@@ -235,7 +234,7 @@ describe("tab-group-counter/background", () => {
       mockExtensionApi.tabGroups.query.mockResolvedValue([
         { id: 1, title: "Work (4)", color: "blue", windowId: 1 },
       ]);
-      mockExtensionApi.tabs.query.mockResolvedValue(Array.from({ length: 4 }, () => ({ groupId: 1 })));
+      mockExtensionApi.tabs.query.mockResolvedValue(Array.from({ length: 4 }).fill({ groupId: 1 }));
 
       await handlers.saveSettings({ format: "{name} ({count})" });
 
@@ -245,13 +244,12 @@ describe("tab-group-counter/background", () => {
       // But original should have been stored as "Work"
       const stored = await chrome.storage.local.get("modules.tabGroupCounter.originalTitles");
       const originals = stored["modules.tabGroupCounter.originalTitles"] as Record<string, string>;
-      expect(originals["1"]).toBe("Work");
+      expect(originals[1]).toBe("Work");
     });
 
     it("should update title when tab count changes", async () => {
-      // First apply with 3 tabs
       await chrome.storage.local.set({
-        "modules.tabGroupCounter.originalTitles": { "1": "Work" },
+        "modules.tabGroupCounter.originalTitles": { 1: "Work" },
       });
       mockExtensionApi.tabGroups.query.mockResolvedValue([
         { id: 1, title: "Work (3)", color: "blue", windowId: 1 },
