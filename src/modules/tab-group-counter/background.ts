@@ -249,13 +249,13 @@ if (extensionApi?.tabs?.onUpdated) {
   );
 }
 
-if (extensionApi?.tabs?.onAttached) {
+if (extensionApi?.tabs?.onAttached?.addListener) {
   extensionApi.tabs.onAttached.addListener(() => {
     scheduleRefresh();
   });
 }
 
-if (extensionApi?.tabs?.onDetached) {
+if (extensionApi?.tabs?.onDetached?.addListener) {
   extensionApi.tabs.onDetached.addListener(() => {
     scheduleRefresh();
   });
