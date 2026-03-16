@@ -222,6 +222,13 @@ if (extensionApi?.tabGroups?.onRemoved) {
   });
 }
 
+// Trigger refresh when a new group is created
+if (extensionApi?.tabGroups?.onCreated) {
+  extensionApi.tabGroups.onCreated.addListener(() => {
+    scheduleRefresh();
+  });
+}
+
 // Re-apply format when tab counts change
 if (extensionApi?.tabs?.onCreated) {
   extensionApi.tabs.onCreated.addListener((tab: { groupId?: number }) => {
