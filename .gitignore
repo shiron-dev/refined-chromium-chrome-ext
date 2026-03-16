@@ -12,3 +12,4 @@
 /.wxt/
 /.output/
 /dev/
+package-lock.json
