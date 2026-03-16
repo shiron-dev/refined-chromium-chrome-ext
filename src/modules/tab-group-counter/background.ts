@@ -249,6 +249,18 @@ if (extensionApi?.tabs?.onUpdated) {
   );
 }
 
+if (extensionApi?.tabs?.onAttached) {
+  extensionApi.tabs.onAttached.addListener(() => {
+    scheduleRefresh();
+  });
+}
+
+if (extensionApi?.tabs?.onDetached) {
+  extensionApi.tabs.onDetached.addListener(() => {
+    scheduleRefresh();
+  });
+}
+
 // Detect module enable/disable from any UI (home screen toggle, detail screen toggle, etc.)
 if (extensionApi?.storage?.onChanged) {
   extensionApi.storage.onChanged.addListener(
