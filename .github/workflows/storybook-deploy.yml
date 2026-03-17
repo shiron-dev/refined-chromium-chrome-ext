@@ -1,0 +1,55 @@
+name: Deploy Storybook to Cloudflare Pages
+
+on:
+  push:
+    branches:
+      - "main"
+  pull_request:
+    branches:
+      - "main"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: write
+  deployments: write
+
+jobs:
+  versions:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      node-version: ${{ steps.mise-versions.outputs.node-version }}
+      pnpm-version: ${{ steps.mise-versions.outputs.pnpm-version }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      - name: Extract versions from mise.toml
+        id: mise-versions
+        run: |
+          echo "node-version=$(grep '^node' mise.toml | sed 's/node = "\(.*\)"/\1/')" >> "$GITHUB_OUTPUT"
+          echo "pnpm-version=$(grep '^pnpm' mise.toml | sed 's/pnpm = "\(.*\)"/\1/')" >> "$GITHUB_OUTPUT"
+
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: versions
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      - uses: shiron-dev/actions/setup-node@0cc65c3143f6a0d119fa8085c8b2ae3dd25e657b # v1.6.3
+        with:
+          node-version: ${{ needs.versions.outputs.node-version }}
+          pnpm-version: ${{ needs.versions.outputs.pnpm-version }}
+      - name: Install dependencies
+        run: pnpm install
+      - name: Build Storybook
+        run: pnpm build:storybook
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/wrangler-action@da0e0dfe58b7a431659754fdf3f186c529afbe65 # v3.14.1
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy storybook-static --project-name=refined-chromium-chrome-ext-storybook --commit-dirty=true
