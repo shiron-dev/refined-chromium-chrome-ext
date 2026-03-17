@@ -74,8 +74,10 @@ async function applyFormatToAll(): Promise<void> {
     return;
 
   const format = (await storage.get<string>("format")) ?? DEFAULT_FORMAT;
-  const allGroups = (await extensionApi.tabGroups.query({})) as Array<{ id: number, title?: string }>;
-  const allTabs = (await extensionApi.tabs.query({})) as Array<{ id?: number, groupId?: number, url?: string, title?: string }>;
+  const groupQueryResult = await extensionApi.tabGroups.query({});
+  const tabsQueryResult = await extensionApi.tabs.query({});
+  const allGroups = (Array.isArray(groupQueryResult) ? groupQueryResult : []) as Array<{ id: number, title?: string }>;
+  const allTabs = (Array.isArray(tabsQueryResult) ? tabsQueryResult : []) as Array<{ id?: number, groupId?: number, url?: string, title?: string }>;
 
   const tabsByGroup = allTabs.reduce<Record<number, Array<{ id?: number, url?: string, title?: string }>>>((acc, tab) => {
     if (tab.groupId !== undefined && tab.groupId >= 0) {
@@ -197,8 +199,25 @@ if (extensionApi?.tabGroups?.onUpdated) {
       storedOriginals[String(group.id)] = newOriginalName;
       await storage.set("originalTitles", storedOriginals);
 
-      // Defer title update to applyFormatToAll to avoid stale tab-count races
-      scheduleRefresh();
+      const tabsQueryResult = extensionApi?.tabs ? await extensionApi.tabs.query({}) : [];
+      const allTabs = (Array.isArray(tabsQueryResult) ? tabsQueryResult : []) as Array<{ groupId?: number }>;
+      const tabCount = allTabs.reduce((count, tab) => count + (tab.groupId === group.id ? 1 : 0), 0);
+      const formattedTitle = applyFormat(format, newOriginalName, tabCount);
+
+      if (formattedTitle === newTitle)
+        return;
+
+      applyingGroups.add(group.id);
+      try {
+        await extensionApi.tabGroups.update(group.id, { title: formattedTitle });
+      }
+      catch (e) {
+        console.warn("[tab-group-counter] tabGroups.onUpdated: group %d update FAILED, will retry", group.id, e);
+        scheduleRefresh();
+      }
+      finally {
+        applyingGroups.delete(group.id);
+      }
     },
   );
 }
