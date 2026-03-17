@@ -89,11 +89,6 @@ async function applyFormatToAll(): Promise<void> {
     Object.entries(tabsByGroup).map(([gid, tabs]) => [gid, tabs.length]),
   );
 
-  console.log("[tab-group-counter] applyFormatToAll: groups=%d, tabCountByGroup=%o", allGroups.length, tabCountByGroup);
-  for (const [gid, tabs] of Object.entries(tabsByGroup)) {
-    console.log("[tab-group-counter] applyFormatToAll: group %s tabs=%o", gid, tabs);
-  }
-
   const storedOriginals = await getStoredOriginalTitles();
   const updatedOriginals: Record<string, string> = { ...storedOriginals };
 
@@ -116,13 +111,10 @@ async function applyFormatToAll(): Promise<void> {
     const tabCount = tabCountByGroup[String(group.id)] ?? 0;
     const newTitle = applyFormat(format, originalTitle, tabCount);
 
-    console.log("[tab-group-counter] applyFormatToAll: group %d currentTitle=%o newTitle=%o tabCount=%d", group.id, currentTitle, newTitle, tabCount);
-
     if (newTitle !== currentTitle) {
       applyingGroups.add(group.id);
       try {
         await extensionApi.tabGroups.update(group.id, { title: newTitle });
-        console.log("[tab-group-counter] applyFormatToAll: group %d updated OK → %o", group.id, newTitle);
       }
       catch (e) {
         console.warn("[tab-group-counter] applyFormatToAll: group %d update FAILED, will retry", group.id, e);
@@ -169,11 +161,9 @@ function scheduleRefresh(): void {
     clearTimeout(refreshTimeout);
   refreshTimeout = setTimeout(() => {
     refreshTimeout = null;
-    console.log("[tab-group-counter] scheduleRefresh: firing applyFormatToAll");
     isModuleEnabled()
       .then((enabled) => {
         if (!enabled) {
-          console.log("[tab-group-counter] scheduleRefresh: module disabled, skipping");
           return;
         }
         return applyFormatToAll();
@@ -188,7 +178,6 @@ function scheduleRefresh(): void {
 if (extensionApi?.tabGroups?.onUpdated) {
   extensionApi.tabGroups.onUpdated.addListener(
     async (group: { id: number, title?: string }) => {
-      console.log("[tab-group-counter] tabGroups.onUpdated", { groupId: group.id, title: group.title, isOurUpdate: applyingGroups.has(group.id) });
       if (applyingGroups.has(group.id))
         return; // Our own update — ignore
 
@@ -208,8 +197,6 @@ if (extensionApi?.tabGroups?.onUpdated) {
       storedOriginals[String(group.id)] = newOriginalName;
       await storage.set("originalTitles", storedOriginals);
 
-      console.log("[tab-group-counter] tabGroups.onUpdated: originalName=%o → scheduleRefresh", newOriginalName);
-
       // Defer title update to applyFormatToAll to avoid stale tab-count races
       scheduleRefresh();
     },
@@ -219,7 +206,6 @@ if (extensionApi?.tabGroups?.onUpdated) {
 // Clean up stored originals when a group is removed
 if (extensionApi?.tabGroups?.onRemoved) {
   extensionApi.tabGroups.onRemoved.addListener(async (groupId: number) => {
-    console.log("[tab-group-counter] tabGroups.onRemoved", { groupId });
     const storedOriginals = await getStoredOriginalTitles();
     const key = String(groupId);
     if (key in storedOriginals) {
@@ -231,8 +217,7 @@ if (extensionApi?.tabGroups?.onRemoved) {
 
 // Trigger refresh when a new group is created
 if (extensionApi?.tabGroups?.onCreated) {
-  extensionApi.tabGroups.onCreated.addListener((group: { id: number, title?: string }) => {
-    console.log("[tab-group-counter] tabGroups.onCreated", { groupId: group.id, title: group.title });
+  extensionApi.tabGroups.onCreated.addListener((_group: { id: number, title?: string }) => {
     scheduleRefresh();
   });
 }
@@ -240,7 +225,6 @@ if (extensionApi?.tabGroups?.onCreated) {
 // Re-apply format when tab counts change
 if (extensionApi?.tabs?.onCreated) {
   extensionApi.tabs.onCreated.addListener((tab: { id?: number, groupId?: number }) => {
-    console.log("[tab-group-counter] tabs.onCreated", { tabId: tab.id, groupId: tab.groupId });
     if (tab.groupId !== undefined && tab.groupId >= 0) {
       scheduleRefresh();
     }
@@ -249,7 +233,6 @@ if (extensionApi?.tabs?.onCreated) {
 
 if (extensionApi?.tabs?.onRemoved) {
   extensionApi.tabs.onRemoved.addListener((tabId: number, removeInfo: { isWindowClosing: boolean }) => {
-    console.log("[tab-group-counter] tabs.onRemoved", { tabId, isWindowClosing: removeInfo.isWindowClosing });
     if (!removeInfo.isWindowClosing) {
       scheduleRefresh();
     }
@@ -260,13 +243,11 @@ if (extensionApi?.tabs?.onUpdated) {
   extensionApi.tabs.onUpdated.addListener(
     (tabId: number, changeInfo: Record<string, unknown>) => {
       if ("groupId" in changeInfo) {
-        console.log("[tab-group-counter] tabs.onUpdated (groupId changed)", { tabId, groupId: changeInfo.groupId });
         scheduleRefresh();
       }
     },
   );
 }
-
 
 // Detect module enable/disable from any UI (home screen toggle, detail screen toggle, etc.)
 if (extensionApi?.storage?.onChanged) {
@@ -277,8 +258,6 @@ if (extensionApi?.storage?.onChanged) {
       const change = changes["modules.tabGroupCounter.enabled"];
       if (change === undefined)
         return;
-
-      console.log("[tab-group-counter] storage.onChanged (enabled)", { newValue: change.newValue });
 
       if (change.newValue === true) {
         applyFormatToAll().catch((e: unknown) => console.error("Tab group counter enable error:", e));
