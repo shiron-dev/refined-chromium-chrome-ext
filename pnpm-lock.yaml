@@ -6,7 +6,7 @@ settings:
 
 overrides:
   chokidar@^4.0.0: 4.0.1
-  undici-types@~6.21.0: 6.24.0
+  undici-types@~6.21.0: 6.24.1
   semver@^6.0.0: 7.7.4
 
 importers:
