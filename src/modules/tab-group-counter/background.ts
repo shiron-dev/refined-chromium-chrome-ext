@@ -74,15 +74,22 @@ async function applyFormatToAll(): Promise<void> {
     return;
 
   const format = (await storage.get<string>("format")) ?? DEFAULT_FORMAT;
-  const allGroups = (await extensionApi.tabGroups.query({})) as Array<{ id: number, title?: string }>;
-  const allTabs = (await extensionApi.tabs.query({})) as Array<{ groupId?: number }>;
+  const groupQueryResult = await extensionApi.tabGroups.query({});
+  const tabsQueryResult = await extensionApi.tabs.query({});
+  const allGroups = (Array.isArray(groupQueryResult) ? groupQueryResult : []) as Array<{ id: number, title?: string }>;
+  const allTabs = (Array.isArray(tabsQueryResult) ? tabsQueryResult : []) as Array<{ id?: number, groupId?: number, url?: string, title?: string }>;
 
-  const tabCountByGroup = allTabs.reduce<Record<number, number>>((acc, tab) => {
+  const tabsByGroup = allTabs.reduce<Record<number, Array<{ id?: number, url?: string, title?: string }>>>((acc, tab) => {
     if (tab.groupId !== undefined && tab.groupId >= 0) {
-      acc[tab.groupId] = (acc[tab.groupId] ?? 0) + 1;
+      acc[tab.groupId] ??= [];
+      acc[tab.groupId].push({ id: tab.id, url: tab.url, title: tab.title });
     }
     return acc;
   }, {});
+
+  const tabCountByGroup = Object.fromEntries(
+    Object.entries(tabsByGroup).map(([gid, tabs]) => [gid, tabs.length]),
+  );
 
   const storedOriginals = await getStoredOriginalTitles();
   const updatedOriginals: Record<string, string> = { ...storedOriginals };
@@ -103,7 +110,7 @@ async function applyFormatToAll(): Promise<void> {
       updatedOriginals[key] = originalTitle;
     }
 
-    const tabCount = tabCountByGroup[group.id] ?? 0;
+    const tabCount = tabCountByGroup[String(group.id)] ?? 0;
     const newTitle = applyFormat(format, originalTitle, tabCount);
 
     if (newTitle !== currentTitle) {
@@ -111,8 +118,9 @@ async function applyFormatToAll(): Promise<void> {
       try {
         await extensionApi.tabGroups.update(group.id, { title: newTitle });
       }
-      catch {
-        // Group may have been removed
+      catch (e) {
+        console.warn("[tab-group-counter] applyFormatToAll: group %d update FAILED, will retry", group.id, e);
+        scheduleRefresh();
       }
       finally {
         applyingGroups.delete(group.id);
@@ -157,8 +165,10 @@ function scheduleRefresh(): void {
     refreshTimeout = null;
     isModuleEnabled()
       .then((enabled) => {
-        if (enabled)
-          return applyFormatToAll();
+        if (!enabled) {
+          return;
+        }
+        return applyFormatToAll();
       })
       .catch((e: unknown) => console.error("Tab group counter refresh error:", e));
   }, 150);
@@ -189,22 +199,24 @@ if (extensionApi?.tabGroups?.onUpdated) {
       storedOriginals[String(group.id)] = newOriginalName;
       await storage.set("originalTitles", storedOriginals);
 
-      // Re-apply format with updated original name
-      const tabs = (await extensionApi.tabs.query({ groupId: group.id })) as unknown[];
-      const tabCount = tabs.length;
+      const tabsQueryResult = extensionApi?.tabs ? await extensionApi.tabs.query({}) : [];
+      const allTabs = (Array.isArray(tabsQueryResult) ? tabsQueryResult : []) as Array<{ groupId?: number }>;
+      const tabCount = allTabs.reduce((count, tab) => count + (tab.groupId === group.id ? 1 : 0), 0);
       const formattedTitle = applyFormat(format, newOriginalName, tabCount);
 
-      if (formattedTitle !== newTitle) {
-        applyingGroups.add(group.id);
-        try {
-          await extensionApi.tabGroups.update(group.id, { title: formattedTitle });
-        }
-        catch {
-          // ignore
-        }
-        finally {
-          applyingGroups.delete(group.id);
-        }
+      if (formattedTitle === newTitle)
+        return;
+
+      applyingGroups.add(group.id);
+      try {
+        await extensionApi.tabGroups.update(group.id, { title: formattedTitle });
+      }
+      catch (e) {
+        console.warn("[tab-group-counter] tabGroups.onUpdated: group %d update FAILED, will retry", group.id, e);
+        scheduleRefresh();
+      }
+      finally {
+        applyingGroups.delete(group.id);
       }
     },
   );
@@ -222,9 +234,16 @@ if (extensionApi?.tabGroups?.onRemoved) {
   });
 }
 
+// Trigger refresh when a new group is created
+if (extensionApi?.tabGroups?.onCreated) {
+  extensionApi.tabGroups.onCreated.addListener((_group: { id: number, title?: string }) => {
+    scheduleRefresh();
+  });
+}
+
 // Re-apply format when tab counts change
 if (extensionApi?.tabs?.onCreated) {
-  extensionApi.tabs.onCreated.addListener((tab: { groupId?: number }) => {
+  extensionApi.tabs.onCreated.addListener((tab: { id?: number, groupId?: number }) => {
     if (tab.groupId !== undefined && tab.groupId >= 0) {
       scheduleRefresh();
     }
@@ -232,7 +251,7 @@ if (extensionApi?.tabs?.onCreated) {
 }
 
 if (extensionApi?.tabs?.onRemoved) {
-  extensionApi.tabs.onRemoved.addListener((_tabId: number, removeInfo: { isWindowClosing: boolean }) => {
+  extensionApi.tabs.onRemoved.addListener((tabId: number, removeInfo: { isWindowClosing: boolean }) => {
     if (!removeInfo.isWindowClosing) {
       scheduleRefresh();
     }
@@ -241,7 +260,7 @@ if (extensionApi?.tabs?.onRemoved) {
 
 if (extensionApi?.tabs?.onUpdated) {
   extensionApi.tabs.onUpdated.addListener(
-    (_tabId: number, changeInfo: Record<string, unknown>) => {
+    (tabId: number, changeInfo: Record<string, unknown>) => {
       if ("groupId" in changeInfo) {
         scheduleRefresh();
       }

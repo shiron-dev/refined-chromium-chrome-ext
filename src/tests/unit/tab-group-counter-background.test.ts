@@ -8,6 +8,7 @@ const { mockExtensionApi } = vi.hoisted(() => {
     tabGroups: {
       query: vi.fn<() => Promise<unknown[]>>(),
       update: vi.fn<() => Promise<void>>(),
+      onCreated: { addListener: vi.fn() },
       onUpdated: { addListener: vi.fn() },
       onRemoved: { addListener: vi.fn() },
     },
@@ -37,6 +38,7 @@ const handlers = backgroundHandlers as Record<string, (payload?: unknown) => Pro
 // ─── Event listener callbacks (captured before vi.clearAllMocks() runs) ───────
 // describe() body runs during test collection, before any beforeEach/afterEach hooks.
 // Capturing here preserves the references even after vi.clearAllMocks() clears mock.calls.
+type TabGroupCreatedCb = () => void;
 type TabGroupUpdatedCb = (group: { id: number, title?: string }) => Promise<void>;
 type TabGroupRemovedCb = (groupId: number) => Promise<void>;
 type TabCreatedCb = (tab: { groupId?: number }) => void;
@@ -49,6 +51,8 @@ const flushPromises = () => new Promise<void>(resolve => setTimeout(resolve, 0))
 
 describe("tab-group-counter/background", () => {
   // Capture callbacks registered at module load time
+  const tabGroupsOnCreatedCb = mockExtensionApi.tabGroups.onCreated.addListener.mock
+    .calls[0]?.[0] as TabGroupCreatedCb | undefined;
   const tabGroupsOnUpdatedCb = mockExtensionApi.tabGroups.onUpdated.addListener.mock
     .calls[0]?.[0] as TabGroupUpdatedCb | undefined;
   const tabGroupsOnRemovedCb = mockExtensionApi.tabGroups.onRemoved.addListener.mock
@@ -471,6 +475,55 @@ describe("tab-group-counter/background", () => {
       vi.advanceTimersByTime(300);
 
       expect(mockExtensionApi.tabGroups.query).not.toHaveBeenCalled();
+    });
+
+    it("should call tabGroups.update with formatted title after groupId change", async () => {
+      vi.useFakeTimers();
+      mockExtensionApi.tabGroups.query.mockResolvedValue([
+        { id: 1, title: "Work", color: "blue", windowId: 1 },
+      ]);
+      mockExtensionApi.tabs.query.mockResolvedValue([
+        { groupId: 1 },
+        { groupId: 1 },
+        { groupId: 1 },
+      ]);
+
+      tabsOnUpdatedCb?.(2, { groupId: 1 });
+      await vi.runAllTimersAsync();
+
+      expect(mockExtensionApi.tabGroups.update).toHaveBeenCalledWith(1, { title: "Work (3)" });
+    });
+  });
+
+  // ─── tabGroups.onCreated listener ────────────────────────────────────────────
+
+  describe("tabGroups.onCreated listener", () => {
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it("should schedule refresh when a new group is created", async () => {
+      vi.useFakeTimers();
+      tabGroupsOnCreatedCb?.();
+      await vi.runAllTimersAsync();
+
+      expect(mockExtensionApi.tabGroups.query).toHaveBeenCalled();
+    });
+
+    it("should call tabGroups.update after group creation with tabs", async () => {
+      vi.useFakeTimers();
+      mockExtensionApi.tabGroups.query.mockResolvedValue([
+        { id: 5, title: "NewGroup", color: "red", windowId: 1 },
+      ]);
+      mockExtensionApi.tabs.query.mockResolvedValue([
+        { groupId: 5 },
+        { groupId: 5 },
+      ]);
+
+      tabGroupsOnCreatedCb?.();
+      await vi.runAllTimersAsync();
+
+      expect(mockExtensionApi.tabGroups.update).toHaveBeenCalledWith(5, { title: "NewGroup (2)" });
     });
   });
 
