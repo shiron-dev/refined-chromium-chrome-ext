@@ -45,6 +45,7 @@ jobs:
       - renovate-deps-comment
       - ts-check
       - build
+      - build-storybook
       - test
     if: ${{ always() }}
     steps:
@@ -130,6 +131,21 @@ jobs:
         run: pnpm install
       - name: Run build
         run: pnpm build
+
+  build-storybook:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: versions
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      - uses: shiron-dev/actions/setup-node@0cc65c3143f6a0d119fa8085c8b2ae3dd25e657b # v1.6.3
+        with:
+          node-version: ${{ needs.versions.outputs.node-version }}
+          pnpm-version: ${{ needs.versions.outputs.pnpm-version }}
+      - name: Install dependencies
+        run: pnpm install
+      - name: Build Storybook
+        run: pnpm build:storybook
 
   test:
     runs-on: ubuntu-latest
