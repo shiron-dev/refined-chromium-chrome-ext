@@ -34,7 +34,7 @@
     }
   },
   "devDependencies": {
-    "@playwright/test": "1.58.2",
+    "@playwright/test": "1.59.0",
     "@react-router/dev": "7.13.2",
     "@shiron-dev/eslint-config": "2.1.5",
     "@types/chrome": "0.1.38",
