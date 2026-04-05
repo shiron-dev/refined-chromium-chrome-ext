@@ -19,12 +19,12 @@
     "prepare": "wxt prepare"
   },
   "dependencies": {
-    "@react-router/node": "^7.13.2",
-    "@react-router/serve": "^7.13.2",
+    "@react-router/node": "^7.14.0",
+    "@react-router/serve": "^7.14.0",
     "isbot": "^5.1.37",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
-    "react-router": "^7.13.2"
+    "react-router": "^7.14.0"
   },
   "pnpm": {
     "overrides": {
@@ -35,7 +35,7 @@
   },
   "devDependencies": {
     "@playwright/test": "1.59.1",
-    "@react-router/dev": "7.13.2",
+    "@react-router/dev": "7.14.0",
     "@shiron-dev/eslint-config": "2.1.5",
     "@types/chrome": "0.1.38",
     "@types/node": "24.12.0",
