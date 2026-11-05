@@ -69,8 +69,8 @@ importers:
         specifier: 28.1.0
         version: 28.1.0
       react-router-devtools:
-        specifier: 6.2.0
-        version: 6.2.0(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(csstype@3.2.3)(react-dom@19.2.5(react@19.2.5))(react-router@7.14.0(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(react@19.2.5)(solid-js@1.9.11)(vite@7.3.1(@types/node@24.12.2)(jiti@2.6.1)(lightningcss@1.29.2)(terser@5.46.0)(yaml@2.8.2))
+        specifier: 6.2.3
+        version: 6.2.3(@types/node@24.12.2)(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(csstype@3.2.3)(jiti@2.6.1)(lightningcss@1.29.2)(react-dom@19.2.5(react@19.2.5))(react-router@7.14.0(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(react@19.2.5)(solid-js@1.9.11)(terser@5.46.0)(vite@7.3.1(@types/node@24.12.2)(jiti@2.6.1)(lightningcss@1.29.2)(terser@5.46.0)(yaml@2.8.2))(yaml@2.8.2)
       typescript:
         specifier: 5.9.3
         version: 5.9.3
@@ -3656,15 +3656,15 @@ packages:
     resolution: {integrity: sha512-QgT5//D3jfjJb6Gsjxv0Slpj23ip+HtOpnNgnb2S5zU3CB26G/IDPGoy4RJB42wzFE46DRsstbW6tKHoKbhAxw==}
     engines: {node: '>=0.10.0'}
 
-  react-router-devtools@6.2.0:
-    resolution: {integrity: sha512-YzaFAyKZEtTmWzBF/moKuMtEa8Hd/xhTtUCKarrhAbZMyR8S0OpCpN0pyKrNGNz7ueOc4jvvKdE9S6Q3UTotDg==}
+  react-router-devtools@6.2.3:
+    resolution: {integrity: sha512-3JgKXzB2/167052LgCLSh7ECb4vi8fu/Ddr8UfdO3OH2lFIDMbr6tMtTe3Wek16puahgPDKniqRw6bZCAu7CFg==}
     peerDependencies:
       '@types/react': '>=17'
       '@types/react-dom': '>=17'
       react: '>=17'
       react-dom: '>=17'
       react-router: '>=7.0.0'
-      vite: '>=5.0.0 || >=6.0.0'
+      vite: '>=5.0.0'
 
   react-router@7.14.0:
     resolution: {integrity: sha512-m/xR9N4LQLmAS0ZhkY2nkPA1N7gQ5TUVa5n8TgANuDTARbn1gt+zLPXEm7W0XDTbrQ2AJSJKhoa6yx1D8BcpxQ==}
@@ -4076,6 +4076,7 @@ packages:
   tsconfck@3.1.6:
     resolution: {integrity: sha512-ks6Vjr/jEw0P1gmOVwutM3B7fWxoWBL2KRDb1JfqGVawBmO5UsvmWOQFGHBPl5yxYz4eERr19E6L7NMv+Fej4w==}
     engines: {node: ^18 || >=20}
+    deprecated: unmaintained
     hasBin: true
     peerDependencies:
       typescript: ^5.0.0
@@ -4177,6 +4178,7 @@ packages:
 
   uuid@8.3.2:
     resolution: {integrity: sha512-+NYs2QeMWy+GWFOEm9xnn6HCDp0l7QBD7ml8zLUmJ+93Q5NF0NocErnwkTkXVFNiX3/fpC6afS8Dhb/gz7R7eg==}
+    deprecated: uuid@10 and below is no longer supported.  For ESM codebases, update to uuid@latest.  For CommonJS codebases, use uuid@11 (but be aware this version will likely be deprecated in 2028).
     hasBin: true
 
   valibot@1.2.0:
@@ -8239,7 +8241,7 @@ snapshots:
 
   react-refresh@0.18.0: {}
 
-  react-router-devtools@6.2.0(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(csstype@3.2.3)(react-dom@19.2.5(react@19.2.5))(react-router@7.14.0(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(react@19.2.5)(solid-js@1.9.11)(vite@7.3.1(@types/node@24.12.2)(jiti@2.6.1)(lightningcss@1.29.2)(terser@5.46.0)(yaml@2.8.2)):
+  react-router-devtools@6.2.3(@types/node@24.12.2)(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(csstype@3.2.3)(jiti@2.6.1)(lightningcss@1.29.2)(react-dom@19.2.5(react@19.2.5))(react-router@7.14.0(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(react@19.2.5)(solid-js@1.9.11)(terser@5.46.0)(vite@7.3.1(@types/node@24.12.2)(jiti@2.6.1)(lightningcss@1.29.2)(terser@5.46.0)(yaml@2.8.2))(yaml@2.8.2):
     dependencies:
       '@babel/core': 7.29.0
       '@babel/generator': 7.29.1
@@ -8264,17 +8266,29 @@ snapshots:
       react-router: 7.14.0(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
       react-tooltip: 5.30.0(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
       vite: 7.3.1(@types/node@24.12.2)(jiti@2.6.1)(lightningcss@1.29.2)(terser@5.46.0)(yaml@2.8.2)
+      vite-node: 5.3.0(@types/node@24.12.2)(jiti@2.6.1)(lightningcss@1.29.2)(terser@5.46.0)(yaml@2.8.2)
     optionalDependencies:
       '@biomejs/cli-darwin-arm64': 2.4.7
       '@rollup/rollup-darwin-arm64': 4.59.0
       '@rollup/rollup-linux-x64-gnu': 4.59.0
     transitivePeerDependencies:
       - '@emotion/is-prop-valid'
+      - '@types/node'
       - bufferutil
       - csstype
+      - jiti
+      - less
+      - lightningcss
+      - sass
+      - sass-embedded
       - solid-js
+      - stylus
+      - sugarss
       - supports-color
+      - terser
+      - tsx
       - utf-8-validate
+      - yaml
 
   react-router@7.14.0(react-dom@19.2.5(react@19.2.5))(react@19.2.5):
     dependencies:
